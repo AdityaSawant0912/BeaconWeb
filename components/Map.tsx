@@ -33,7 +33,16 @@ const defaultMapOptions = {
 
 };
 
-export default function Map(props: any) {
+interface MapProps {
+    options?: typeof defaultMapOptions;
+    center?: typeof defaultCenter;
+    zoom?: number;
+    onLoad?: (map: google.maps.Map) => void;
+    children?: React.ReactNode;
+    onClick?: (e: google.maps.MapMouseEvent) => void;
+}
+
+export default function Map(props: MapProps) {
 
     const {
         options = defaultMapOptions,
