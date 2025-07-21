@@ -3,7 +3,7 @@ import React from 'react';
 import { Marker, Polygon } from '@react-google-maps/api';
 import Map from '@/components/Map'; // Assuming this is your wrapper for GoogleMap component
 import { LatLngLiteral, GeoFence } from '@/types/map'; // Import types
-import { calculatePolygonCentroid, defaultMapContainerStyle } from '@/utils/mapUtils'; // Import utilities
+import { calculatePolygonCentroid } from '@/utils/mapUtils'; // Import utilities
 
 /**
  * Props interface for the MapDisplay component.
@@ -34,7 +34,7 @@ export const MapDisplay: React.FC<MapDisplayProps> = ({
   onClick,
 }) => {
   return (
-    <Map center={center} onLoad={onLoad} onClick={onClick} containerStyle={defaultMapContainerStyle}>
+    <Map center={center} onLoad={onLoad} onClick={onClick}>
       {/* Marker for the current location or clicked center */}
       <Marker
         position={center}
