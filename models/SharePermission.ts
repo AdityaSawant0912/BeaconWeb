@@ -30,4 +30,4 @@ const SharePermissionSchema = new Schema({
 // Ensure unique sharing relationships (a sharer shares with a viewer only once)
 SharePermissionSchema.index({ sharerId: 1, viewerId: 1 }, { unique: true });
 
-export default models.SharePermission || model('Location', SharePermissionSchema)
+export default models.SharePermission || model('SharePermission', SharePermissionSchema)
