@@ -1,5 +1,7 @@
 "use client"
 
+import { FunctionMapArgs, FunctionMap } from '@/types/map'; // Import types
+
 import isInWebView from "@/utils/isInWebView";
 import { useEffect } from "react";
 
@@ -20,9 +22,14 @@ export default function useNativeWebBridge(functionMap: FunctionMap) {
 
   useEffect(() => {
 
+    type FunctionNameAndArgs = {
+      functionName: string,
+      args: FunctionMap
+    }
+
     function handleEvent(message: Event) {
-      const {data} = message as MessageEvent
-      const {functionName, args} = JSON.parse(data)
+      const { data } = message as MessageEvent
+      const { functionName, args }: FunctionNameAndArgs = JSON.parse(data)
       functionMap[functionName](args)
     }
     document.addEventListener("message", handleEvent);

@@ -17,17 +17,6 @@ declare global {
     interface WebViewMessage {
         data: object
     }
-    type FunctionMap = {
-        [key: string]: (args: FunctionMapArgs) => string | object | void;
-    };
-    type FunctionMapArgs = {
-        [key: string]: value
-    }
-    // Define a type for a LatLng literal
-    interface LatLngLiteral {
-        lat: number;
-        lng: number;
-    }
 
     // Redefine GeoFence to use 'paths' for polygon vertices
     export interface GeoFence {

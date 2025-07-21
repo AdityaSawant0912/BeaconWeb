@@ -1,3 +1,5 @@
+import { LatLngLiteral } from "@/types/map";
+
 export const calculatePolygonCentroid = (paths: LatLngLiteral[]): LatLngLiteral => {
   if (paths.length === 0) {
     return { lat: 0, lng: 0 };
@@ -12,4 +14,11 @@ export const calculatePolygonCentroid = (paths: LatLngLiteral[]): LatLngLiteral 
     lat: latSum / paths.length,
     lng: lngSum / paths.length,
   };
+};
+
+
+export const defaultMapContainerStyle = {
+  width: '100%',
+  height: '80vh',
+  borderRadius: '15px 0px 0px 15px',
 };

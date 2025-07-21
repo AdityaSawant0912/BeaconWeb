@@ -1,6 +1,5 @@
 // src/components/overlays/AddFenceOverlay.tsx (or .jsx)
-import React, { useState, useEffect } from 'react';
-import { GeoFence } from '@/app/page'; // For LatLngLiteral definition if needed, or define locally
+import React, { useState } from 'react';
 
 interface LatLngLiteral {
   lat: number;
@@ -31,14 +30,6 @@ const AddFenceOverlay: React.FC<AddFenceOverlayProps> = ({ onClose, onSave, draw
     onSave(fenceName, drawingPaths, fenceColor);
   };
 
-  // Predefined color options
-  const colorOptions = [
-    { name: 'Red', hex: '#FF0000' },
-    { name: 'Blue', hex: '#0000FF' },
-    { name: 'Green', hex: '#00FF00' },
-    { name: 'Yellow', hex: '#FFFF00' },
-    { name: 'Purple', hex: '#800080' },
-  ];
 
   return (
     <div className="absolute bottom-16 left-0 right-0 bg-white p-4 shadow-lg rounded-t-lg z-20">
