@@ -1,4 +1,4 @@
-import { GoogleMap} from "@react-google-maps/api";
+import { GoogleMap } from "@react-google-maps/api";
 import MapProvider from "@/providers/map-provider";
 
 const defaultMapContainerStyle = {
@@ -6,6 +6,17 @@ const defaultMapContainerStyle = {
     height: '100%',
 };
 
+const mapStyles = [
+    {
+        featureType: "poi.business",
+        stylers: [{ visibility: "off" }],
+    },
+    {
+        featureType: "transit",
+        elementType: "labels.icon",
+        stylers: [{ visibility: "off" }],
+    },
+];
 
 const defaultZoom = 18;
 const defaultCenter = { lat: 0, lng: 0 }
@@ -16,27 +27,28 @@ const defaultMapOptions = {
     fullscreenControl: false,
     mapTypeControl: false,
     streetViewControl: false,
-    scaleControl:false,
-    cameraControl: false
+    scaleControl: false,
+    cameraControl: false,
+    mapStyles: mapStyles
+
 };
 
-export default function Map(props:any) {
+export default function Map(props: any) {
 
     const {
         options = defaultMapOptions,
         center = defaultCenter,
         zoom = defaultZoom,
         onLoad,
-        children
+        children,
+        onClick
     } = props
 
     return (
-        <div className="w-full h-[700px]">
-            <MapProvider>
-                <GoogleMap mapContainerStyle={defaultMapContainerStyle} options={options} center={center} zoom={zoom} onLoad={onLoad}>
+        <MapProvider>
+            <GoogleMap  mapContainerStyle={defaultMapContainerStyle} options={options} center={center} zoom={zoom} onLoad={onLoad} onClick={onClick}>
                 {children}
-                </GoogleMap>
-            </MapProvider>
-        </div>
+            </GoogleMap>
+        </MapProvider>
     )
 }

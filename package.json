@@ -12,6 +12,7 @@
     "@auth/mongodb-adapter": "^3.10.0",
     "@react-google-maps/api": "^2.20.7",
     "mongodb": "^6.17.0",
+    "mongoose": "^8.16.4",
     "next": "15.3.5",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",
