@@ -1,10 +1,6 @@
 import { GoogleMap } from "@react-google-maps/api";
 import MapProvider from "@/providers/map-provider";
-
-const defaultMapContainerStyle = {
-    width: '100%',
-    height: '100%',
-};
+import { defaultMapContainerStyle } from "@/utils/mapUtils";
 
 const mapStyles = [
     {
