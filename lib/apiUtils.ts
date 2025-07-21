@@ -1,8 +1,9 @@
 // lib/apiUtils.ts
 import { auth } from '@/lib/auth';
 import dbconnect from '@/lib/dbconnect';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import User from '@/models/Users'; // Assuming User model is available
+import { Session } from 'next-auth';
 
 /**
  * Standardized API error response.
@@ -14,10 +15,10 @@ import User from '@/models/Users'; // Assuming User model is available
  * @param status - The HTTP status code to be returned (e.g., 400, 403, 404, 500).
  * @returns NextResponse with a JSON error payload.
  */
-export function handleApiError(message: string, error: any, status: number): NextResponse {
+export function handleApiError(message: string, error: unknown, status: number): NextResponse {
     console.error(`API Error (${status}): ${message}`, error);
     // Return a consistent error structure. Use error.message if available, otherwise convert to string.
-    return NextResponse.json({ message, error: error?.message || error?.toString() || 'Unknown error' }, { status });
+    return NextResponse.json({ message, error: error || error?.toString() || 'Unknown error' }, { status });
 }
 
 /**
@@ -32,7 +33,7 @@ export function handleApiError(message: string, error: any, status: number): Nex
  * @returns A promise that resolves to an object containing the authenticated session and user document.
  * @throws {NextResponse} If authentication fails, user is not found, or database connection fails.
  */
-export async function authenticateAndConnect(request: NextRequest): Promise<{ session: any, user: any }> {
+export async function authenticateAndConnect(): Promise<{ session: Session, user: unknown }> {
     const session = await auth();
     // If no session or user email in session, return Unauthorized error
     if (!session || !session.user?.email) {

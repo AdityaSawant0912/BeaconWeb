@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
  * @param request - The NextRequest object.
  * @returns NextResponse with an array of share permissions.
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
         const session = await auth(); // Get the user session
 
