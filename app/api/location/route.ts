@@ -90,7 +90,7 @@ export async function GET() {
             // Extract the IDs of the users who are sharing their location with the current user
             const sharerIds = sharedPermissions.map(permission => permission.sharerId);
 
-            let sharedLocations: any[] = [];
+            let sharedLocations: unknown[] = [];
             if (sharerIds.length > 0) {
                 // For each sharer, find their latest location
                 // Using $in to query for multiple user IDs
