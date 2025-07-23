@@ -1,4 +1,13 @@
-import { Schema, model, models} from 'mongoose'
+import { Schema, model, models, Document, Types} from 'mongoose'
+
+export interface ISharePermission extends Document {
+  sharerId: Types.ObjectId; // User who is sharing their location
+  viewerId: Types.ObjectId; // User who is allowed to view the sharer's location
+  status: 'active' | 'pending_request' | 'rejected' | 'paused';
+  createdAt: Date;
+  expiresAt?: Date; // Optional: for temporary sharing
+}
+
 
 const SharePermissionSchema = new Schema({
   sharerId: {
