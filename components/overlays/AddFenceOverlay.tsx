@@ -1,11 +1,7 @@
 // src/components/overlays/AddFenceOverlay.tsx (or .jsx)
 import React, { useState } from 'react';
-
-interface LatLngLiteral {
-  lat: number;
-  lng: number;
-}
-
+import { LatLngLiteral } from '@/types/map';
+import Icon from "@/components/Icon";
 interface AddFenceOverlayProps {
   onClose: () => void;
   onSave: (name: string, paths: LatLngLiteral[], color: string) => void;
@@ -36,7 +32,7 @@ const AddFenceOverlay: React.FC<AddFenceOverlayProps> = ({ onClose, onSave, draw
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Add New Polygon Fence</h2>
         <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-          X
+          <Icon name='close' size={'25px'}/>
         </button>
       </div>
 

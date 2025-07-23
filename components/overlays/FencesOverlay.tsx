@@ -1,6 +1,6 @@
 // src/components/overlays/FencesOverlay.tsx (or .jsx)
 import React from 'react';
-
+import Icon from "@/components/Icon";
 
 interface FencesOverlayProps {
   fences: GeoFence[];
@@ -14,7 +14,7 @@ const FencesOverlay: React.FC<FencesOverlayProps> = ({ fences, onClose, onAddFen
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Your Fences (Polygons)</h2>
         <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-          X
+          <Icon name='close' size={'25px'}/>
         </button>
       </div>
 
@@ -23,18 +23,7 @@ const FencesOverlay: React.FC<FencesOverlayProps> = ({ fences, onClose, onAddFen
         className="bg-teal-500 text-white px-4 py-2 rounded-md mb-4 w-full flex items-center justify-center space-x-2"
       >
         <span>Add Polygon Fence</span>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-            clipRule="evenodd"
-          />
-        </svg>
+        <Icon name='plus' size={'20px'}/>
       </button>
 
       {fences.length === 0 ? (
