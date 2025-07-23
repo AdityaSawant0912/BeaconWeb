@@ -30,12 +30,6 @@ import { LatLngLiteral } from '@/types/map'; // Keep LatLngLiteral for polygon r
 import { DefaultOverlays, ExclusiveOverlays, OverlayType } from '@/types/enums';
 
 
-export const defaultMapContainerStyle = {
-  width: '100%',
-  height: '80vh',
-  borderRadius: '15px 0px 0px 15px',
-};
-
 
 export default function Home() {
   // --- Consume Contexts ---
