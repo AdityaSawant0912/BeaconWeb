@@ -19,5 +19,5 @@ declare global {
     }
     var mongoose: { conn: typeof mongoose | null; promise: Promise<typeof mongoose> | mongoose | null } | undefined;
     
-    
+    type APIError = unknown
 }

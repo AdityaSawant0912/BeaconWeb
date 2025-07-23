@@ -95,7 +95,7 @@ export function useSharePermissions() {
       fetchPermissions(); // Re-fetch all permissions to update the lists
 
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to send location request:", error);
       setErrorPermissions(error.message || "Failed to send request.");
       return false;
@@ -118,7 +118,7 @@ export function useSharePermissions() {
       setPendingRequests(prev => prev.filter(req => req._id !== permissionId));
       setIncomingLocations(prev => [...prev, res.acceptedPermission.sharer]); // Assuming API returns the accepted permission with sharer details
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to accept request:", error);
       setErrorPermissions(error.message || "Failed to accept request.");
       return false;
@@ -140,7 +140,7 @@ export function useSharePermissions() {
       // Optimistic update: remove from pending
       setPendingRequests(prev => prev.filter(req => req._id !== permissionId));
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to decline request:", error);
       setErrorPermissions(error.message || "Failed to decline request.");
       return false;
@@ -162,7 +162,7 @@ export function useSharePermissions() {
       // Optimistic update: remove from outgoing
       setOutgoingLocations(prev => prev.filter(share => share._id !== permissionId));
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to stop sharing:", error);
       setErrorPermissions(error.message || "Failed to stop sharing.");
       return false;
