@@ -1,6 +1,15 @@
-import { Schema, model, models } from 'mongoose'
+import { Schema, model, models, Document } from 'mongoose'
 
-const UserSchema = new Schema({
+export interface IUser extends Document {
+  name: string;
+  email: string;
+  image?: string;
+  emailVerified?: boolean;
+  // Potentially lastKnownLocation: { lat: number, lng: number, timestamp: Date }
+  // if you want to store it directly on the User model for quick access.
+}
+
+const UserSchema = new Schema<IUser>({
   name: {
     type: String,
     required: true

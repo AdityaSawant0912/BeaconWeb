@@ -10,6 +10,12 @@ declare global {
         onMessageFromNative: (message: string) => void
 
     }
+    
+    interface Session {
+        user: {
+            _id: string
+        }
+    }
     interface Chrome {
         webview: WebView2;
     }

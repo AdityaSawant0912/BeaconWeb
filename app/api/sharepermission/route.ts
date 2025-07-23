@@ -6,7 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import User from '@/models/Users';
 import SharePermission from '@/models/SharePermission';
 import Location from '@/models/Location'; // Import Location model to get latest locations
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
+import { PopulatedIncomingSharePermission, PopulatedOutgoingSharePermission, PopulatedPendingRequestSharePermission, PopulatedSentRequestSharePermission } from '@/types/sharing';
 
 /**
  * Helper function to get the latest location for a user
@@ -53,11 +54,11 @@ export async function GET() {
         })
             .populate('sharerId', 'name email image'); // Populate sharer's details
 
-        const incomingPromises = incomingPermissions.map(async (permission: any) => {
+        const incomingPromises = incomingPermissions.map(async (permission: PopulatedIncomingSharePermission) => {
             const sharerUser = permission.sharerId; // This is the populated User object
             if (!sharerUser) return null; // Handle case where sharer user might not exist anymore
 
-            const latestLocation = await getLatestLocationForUser(sharerUser._id);
+            const latestLocation = await getLatestLocationForUser(sharerUser._id as unknown as Types.ObjectId);
 
             return {
                 _id: permission._id, // SharePermission ID
@@ -81,7 +82,7 @@ export async function GET() {
         })
             .populate('viewerId', 'name email image'); // Populate viewer's details
 
-        const outgoing = outgoingPermissions.map((permission: any) => ({
+        const outgoing = outgoingPermissions.map((permission: PopulatedOutgoingSharePermission) => ({
             _id: permission._id, // SharePermission ID
             viewer: {
                 _id: permission.viewerId._id,
@@ -100,7 +101,7 @@ export async function GET() {
         })
             .populate('viewerId', 'name email image'); // Populate requester's details
 
-        const pending = pendingRequests.map((permission: any) => ({
+        const pending = pendingRequests.map((permission: PopulatedPendingRequestSharePermission) => ({
             _id: permission._id, // SharePermission ID
             requester: {
                 _id: permission.viewerId._id, // The one who requested (is the viwer in the permission doc)
@@ -118,7 +119,7 @@ export async function GET() {
         })
             .populate('sharerId', 'name email image'); // Populate requester's details
 
-        const sent = sentRequests.map((permission: any) => ({
+        const sent = sentRequests.map((permission: PopulatedSentRequestSharePermission) => ({
             _id: permission._id, // SharePermission ID
             sharer: {
                 _id: permission.sharerId._id, // The one who requested (is the viwer in the permission doc)
@@ -199,9 +200,9 @@ export async function POST(request: NextRequest) {
 
     } catch (error) {
         console.error("Error in POST /api/sharepermission:", error);
-        if (error.code === 11000) {
-            return NextResponse.json({ message: 'Duplicate entry', error: 'A permission already exists for this relationship.' }, { status: 409 });
-        }
+        // if (error.code === 11000) {
+        //     return NextResponse.json({ message: 'Duplicate entry', error: 'A permission already exists for this relationship.' }, { status: 409 });
+        // }
         const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
         return NextResponse.json({ message: 'Internal Server Error', error: errorMessage }, { status: 500 });
     }
