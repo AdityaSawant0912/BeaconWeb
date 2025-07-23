@@ -14,7 +14,7 @@ import SharePermission from '@/models/SharePermission';
  * @param params - Contains the 'id' of the SharePermission document.
  * @returns NextResponse with success message and the updated permission.
  */
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params; // Get permission ID from URL params
 
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {

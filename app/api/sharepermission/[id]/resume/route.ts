@@ -15,8 +15,8 @@ import SharePermission from '@/models/SharePermission';
  * @param params - Contains the 'id' of the SharePermission document.
  * @returns NextResponse with success message.
  */
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-    const { id } = params;
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
 
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         return NextResponse.json({ message: 'Bad Request', error: "Valid SharePermission ID is required" }, { status: 400 });
