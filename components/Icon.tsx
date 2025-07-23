@@ -10,6 +10,9 @@ import React, { Suspense, lazy } from 'react';
 // The structure `lazy(() => import('react-icons/fa').then(mod => ({ default: mod.FaIconName })))`
 // is necessary because react-icons exports named exports, and React.lazy
 // expects a default export.
+
+// https://react-icons.github.io/react-icons/
+
 const LazyIconComponents = {
   // --- Font Awesome (from 'react-icons/fa') ---
   'map-marker': lazy(() => import('react-icons/fa').then(mod => ({ default: mod.FaMapMarkerAlt }))),
@@ -22,6 +25,7 @@ const LazyIconComponents = {
   'settings-md': lazy(() => import('react-icons/md').then(mod => ({ default: mod.MdSettings }))),
   'add-person': lazy(() => import('react-icons/md').then(mod => ({ default: mod.MdPersonAdd }))),
   'center-focus': lazy(() => import('react-icons/md').then(mod => ({ default: mod.MdCenterFocusStrong }))),
+  'delete': lazy(() => import('react-icons/md').then(mod => ({ default: mod.MdDeleteOutline }))),
 
   // --- Example: Ionicons v5 (from 'react-icons/io5') ---
   'settings-outline': lazy(() => import('react-icons/io5').then(mod => ({ default: mod.IoSettingsOutline }))),

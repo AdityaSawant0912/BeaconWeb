@@ -38,7 +38,7 @@ export default function Home() {
   // --- Consume Contexts ---
   const { isOverlayActive, setActiveOverlay } = useOverlayManager();
   // NEW: Consume drawing-related state/functions from useGeoFenceApi
-  const { fences, addFence, drawingPolygonPaths, addDrawingPoint, removeLastDrawingPoint, removeDrawingPoints } = useGeoFenceApi();
+  const { fences, addFence, drawingPolygonPaths, addDrawingPoint, removeLastDrawingPoint, removeDrawingPoints, deleteFence } = useGeoFenceApi();
 
   // --- Callbacks for Overlay Interactions ---
   // The handleAddFence is largely simplified here
@@ -65,7 +65,7 @@ export default function Home() {
             {fences.map(fence => {
               const centroid = calculatePolygonCentroid(fence.paths);
               return (
-                <React.Fragment key={fence.id}>
+                <React.Fragment key={fence._id}>
                   <Polygon
                     paths={fence.paths}
                     options={{
@@ -153,6 +153,7 @@ export default function Home() {
           fences={fences}
           onClose={() => setActiveOverlay(ExclusiveOverlays.FENCES, OverlayType.EXCLUSIVE, false)}
           onAddFenceClick={() => setActiveOverlay(ExclusiveOverlays.ADD_FENCE, OverlayType.EXCLUSIVE, true)}
+          deleteFence={deleteFence}
         />
       )}
       {isOverlayActive(ExclusiveOverlays.ADD_FENCE) && (

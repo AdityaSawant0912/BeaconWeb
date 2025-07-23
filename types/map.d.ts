@@ -12,7 +12,7 @@ export interface LatLngLiteral {
  * Represents a geographical fence (polygon).
  */
 export interface GeoFence {
-  id: string;
+  _id: string;
   name: string;
   paths: LatLngLiteral[];
   color: string;

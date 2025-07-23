@@ -1,7 +1,6 @@
 import { Schema, model, models } from 'mongoose'
 
 const FenceSchema = new Schema({
-    id: { type: String, required: true },
     name: { type: String, required: true },
     color: { type: String, required: true },
     paths: [{
