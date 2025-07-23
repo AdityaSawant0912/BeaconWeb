@@ -1,4 +1,4 @@
-// app/api/sharepermission/[id]/accept/route.ts (or pages/api/sharepermission/[id]/accept.ts)
+// app/api/sharepermission/[id]/stop/route.ts (or pages/api/sharepermission/[id]/stop.ts)
 
 import { auth } from '@/lib/auth';
 import dbconnect from '@/lib/dbconnect';
@@ -8,14 +8,15 @@ import User from '@/models/Users';
 import SharePermission from '@/models/SharePermission';
 
 /**
- * @route PUT /api/sharepermission/:id/accept
- * @description Accepts a pending location request. The authenticated user must be the sharer (who was requested).
+ * @route PUT /api/sharepermission/:id/stop
+ * @description Stops an active sharing permission (sets status to 'paused' or 'rejected').
+ * The authenticated user must be the sharer.
  * @param request - NextRequest object.
  * @param params - Contains the 'id' of the SharePermission document.
- * @returns NextResponse with success message and the updated permission.
+ * @returns NextResponse with success message.
  */
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-    const { id } = await params; // Get permission ID from URL params
+    const { id } = params;
 
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         return NextResponse.json({ message: 'Bad Request', error: "Valid SharePermission ID is required" }, { status: 400 });
@@ -30,33 +31,28 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         await dbconnect();
         const currentUser = await User.findOne({ email: session.user.email });
         if (!currentUser) {
-            console.log("No current user");
-            
             return NextResponse.json({ message: 'User not found', error: "User associated with session email does not exist" }, { status: 404 });
         }
 
-        // Find the permission and ensure it's a pending request *for the current user*
+        // Find the permission and ensure current user is the sharer
         const permission = await SharePermission.findOne({
             _id: id,
-            sharerId: currentUser._id, // Current user must be the viewer (who was requested)
-            status: 'pending_request'
+            sharerId: currentUser._id, // Current user must be the sharer (the one resuming)
+            status: 'paused' // Only allow resuming paused permissions
         });
 
         if (!permission) {
-            return NextResponse.json({ message: "Request not found or not pending for this user", error: "Permission does not exist or is not a pending request for your account" }, { status: 404 });
+            return NextResponse.json({ message: "Permission not found or not active for your account", error: "Permission does not exist or is not an active outgoing share for your account" }, { status: 404 });
         }
 
-        // Update status to 'active'
+        // Set status to 'active' 
         permission.status = 'active';
         await permission.save();
 
-        // Optionally, populate viwer details for the response
-        const acceptedPermission = await permission.populate('viewerId', 'name email image');
-
-        return NextResponse.json({ message: "Location request accepted successfully", acceptedPermission });
+        return NextResponse.json({ message: "Sharing permission paused successfully" });
 
     } catch (error) {
-        console.error("Error in PUT /api/sharepermission/[id]/accept:", error);
+        console.error("Error in PUT /api/sharepermission/[id]/stop:", error);
         const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
         return NextResponse.json({ message: 'Internal Server Error', error: errorMessage }, { status: 500 });
     }

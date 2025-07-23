@@ -9,7 +9,7 @@ import SharePermission from '@/models/SharePermission';
 
 /**
  * @route PUT /api/sharepermission/:id/decline
- * @description Declines a pending location request. The authenticated user must be the viewer.
+ * @description Declines a pending location request. The authenticated user must be the sharer.
  * @param request - NextRequest object.
  * @param params - Contains the 'id' of the SharePermission document.
  * @returns NextResponse with success message.
@@ -35,7 +35,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
         const permission = await SharePermission.findOne({
             _id: id,
-            viewerId: currentUser._id, // Current user must be the viewer
+            sharerId: currentUser._id, // Current user must be the viewer
             status: 'pending_request'
         });
 
@@ -44,12 +44,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         }
 
         // Update status to 'rejected'
-        permission.status = 'rejected';
-        await permission.save();
+        // permission.status = 'rejected';
+        // await permission.save();
         // Alternatively, you could delete the permission instead of setting to 'rejected'
-        // await SharePermission.deleteOne({ _id: id });
+        await SharePermission.deleteOne({ _id: id });
 
-        return NextResponse.json({ message: "Location request declined successfully" });
+        return NextResponse.json({ message: "Location request declined & deleted successfully" });
 
     } catch (error) {
         console.error("Error in PUT /api/sharepermission/[id]/decline:", error);

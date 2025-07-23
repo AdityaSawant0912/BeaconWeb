@@ -47,7 +47,9 @@ export async function GET() {
         // 1. Incoming Locations (Users sharing with current user)
         const incomingPermissions = await SharePermission.find({
             viewerId: currentUserId,
-            status: 'active'
+            status: {
+                $in : ['active', 'paused']
+            }
         })
             .populate('sharerId', 'name email image'); // Populate sharer's details
 
@@ -63,7 +65,8 @@ export async function GET() {
                 name: sharerUser.name,
                 email: sharerUser.email,
                 image: sharerUser.image,
-                currentLocation: latestLocation // Attach latest location
+                currentLocation: latestLocation, // Attach latest location
+                status: permission.status
             };
         });
         const incoming = (await Promise.all(incomingPromises)).filter(Boolean); // Filter out nulls
@@ -72,7 +75,9 @@ export async function GET() {
         // 2. Outgoing Locations (Users current user is sharing with)
         const outgoingPermissions = await SharePermission.find({
             sharerId: currentUserId,
-            status: 'active'
+            status: {
+                $in : ['active', 'paused']
+            }
         })
             .populate('viewerId', 'name email image'); // Populate viewer's details
 
@@ -90,15 +95,33 @@ export async function GET() {
 
         // 3. Pending Requests (Others who have requested current user's location)
         const pendingRequests = await SharePermission.find({
+            sharerId: currentUserId,
+            status: 'pending_request'
+        })
+            .populate('viewerId', 'name email image'); // Populate requester's details
+
+        const pending = pendingRequests.map((permission: any) => ({
+            _id: permission._id, // SharePermission ID
+            requester: {
+                _id: permission.viewerId._id, // The one who requested (is the viwer in the permission doc)
+                name: permission.viewerId.name,
+                email: permission.viewerId.email,
+                image: permission.viewerId.image,
+            },
+            status: permission.status
+        }));
+        
+        // 3. Sent Requests (Others who have requested current user's location)
+        const sentRequests = await SharePermission.find({
             viewerId: currentUserId,
             status: 'pending_request'
         })
             .populate('sharerId', 'name email image'); // Populate requester's details
 
-        const pending = pendingRequests.map((permission: any) => ({
+        const sent = sentRequests.map((permission: any) => ({
             _id: permission._id, // SharePermission ID
-            requester: {
-                _id: permission.sharerId._id, // The one who requested (is the sharer in the permission doc)
+            sharer: {
+                _id: permission.sharerId._id, // The one who requested (is the viwer in the permission doc)
                 name: permission.sharerId.name,
                 email: permission.sharerId.email,
                 image: permission.sharerId.image,
@@ -111,6 +134,7 @@ export async function GET() {
             incoming,
             outgoing,
             pending,
+            sent,
             message: "Share permissions retrieved successfully"
         });
 
@@ -221,8 +245,10 @@ export async function DELETE(request: NextRequest) {
         }
 
         // Authorize: Current user must be either the sharer or the viewer of this permission
-        const isSharer = permissionToDelete.sharerId.equals(currentUser._id);
-        const isViewer = permissionToDelete.viewerId.equals(currentUser._id);
+        console.log(permissionToDelete.sharerId, permissionToDelete.viewerId, currentUser._id.toString());
+        
+        const isSharer = permissionToDelete.sharerId === currentUser._id.toString();
+        const isViewer = permissionToDelete.viewerId === currentUser._id.toString();
 
         if (!isSharer && !isViewer) {
             return NextResponse.json({ message: 'Unauthorized to delete this permission', error: "You are neither the sharer nor the viewer of this permission" }, { status: 403 });

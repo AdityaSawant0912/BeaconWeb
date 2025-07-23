@@ -4,10 +4,7 @@
 
 import React, { useState, useCallback } from 'react';
 import Icon from "@/components/Icon"; // Assuming this is your Icon component
-import { useOverlayManager } from "@/context/OverlayContext";
-import { ExclusiveOverlays } from "@/types/enums";
 import { useSharePermissions } from '@/hooks/useSharePermissions'; // NEW: Import the hook
-import { OverlayType } from '@/types/enums';
 
 interface RequestLocationOverlayProps { // Renamed interface
   onClose: () => void;
@@ -16,7 +13,6 @@ interface RequestLocationOverlayProps { // Renamed interface
 }
 
 const RequestLocationOverlay: React.FC<RequestLocationOverlayProps> = ({ onClose }) => {
-  const { setActiveOverlay } = useOverlayManager();
   const { requestLocation } = useSharePermissions(); // NEW: Get requestLocation from hook
 
   const [viewerEmail, setViewerEmail] = useState('');
@@ -48,24 +44,25 @@ const RequestLocationOverlay: React.FC<RequestLocationOverlayProps> = ({ onClose
         setTimeout(() => {
           onClose(); // Close this overlay
           // Optionally, activate the "Pending Requests" tab in BeaconHub after closing this
-          setActiveOverlay(ExclusiveOverlays.BEACON_HUB, OverlayType.EXCLUSIVE, true);
+          // setActiveOverlay(ExclusiveOverlays.BEACON_HUB, OverlayType.EXCLUSIVE, true);
         }, 1500);
       } else {
         // Error message set by useSharePermissions hook, but can be overridden here if needed
         setStatusMessage("Failed to send request. Please check the email or try again.");
         setIsError(true);
       }
-    } catch (err: any) { // Catch potential errors not handled by requestLocation's return
-      console.error("Error sending request from overlay:", err);
-      setStatusMessage(err.message || "An unexpected error occurred.");
+    } catch (error) { // Catch potential errors not handled by requestLocation's return
+      console.error("Error sending request from overlay:", error);
+      const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
+      setStatusMessage(errorMessage || "An unexpected error occurred.");
       setIsError(true);
     } finally {
       setIsSubmitting(false);
     }
-  }, [viewerEmail, requestLocation, onClose, setActiveOverlay]);
+  }, [viewerEmail, requestLocation, onClose]);
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 bg-white p-4 shadow-lg rounded-t-lg z-20 h-1/2 flex flex-col"> {/* Adjusted height */}
+    <div className="absolute bottom-16 left-0 right-0 bg-white p-4 shadow-lg rounded-t-lg z-20  flex flex-col"> {/* Adjusted height */}
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Request Location</h2> {/* Updated title */}
         <button onClick={onClose} className="text-gray-500 hover:text-gray-700">

@@ -3,13 +3,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useOverlayManager } from '@/context/OverlayContext';
 import { useSharePermissions } from '@/hooks/useSharePermissions';
 import { useNativeBridge } from '@/context/NativeBridgeContext'; // For setLocation
-import { ExclusiveOverlays } from '@/types/enums'; // For RequestLocation overlay trigger
 import { LatLngLiteral } from '@/types/map'; // For location type
 import Icon from '@/components/Icon'; // For action icons
-import { OverlayType } from '@/types/enums';
 
 interface BeaconHubOverlayProps {
   onClose: () => void;
@@ -18,20 +15,21 @@ interface BeaconHubOverlayProps {
 }
 
 const BeaconHubOverlay: React.FC<BeaconHubOverlayProps> = ({ onClose, initialTab, highlightUserId }) => {
-  const { setActiveOverlay } = useOverlayManager();
   const { setLocation } = useNativeBridge(); // Use setLocation for map centering
   const {
     incomingLocations,
     outgoingLocations,
     pendingRequests,
-    isLoadingPermissions,
+    sentRequests,
     errorPermissions,
     acceptRequest,
     declineRequest,
     stopSharing,
+    resumeSharing,
+    deleteRequest
   } = useSharePermissions();
 
-  const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing' | 'pending'>(initialTab || 'incoming');
+  const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing' | 'pending' | 'sent'>(initialTab || 'incoming');
 
   // Effect to set initial tab and scroll to highlighted user
   useEffect(() => {
@@ -51,15 +49,15 @@ const BeaconHubOverlay: React.FC<BeaconHubOverlayProps> = ({ onClose, initialTab
     onClose(); // Close the Beacon Hub after centering the map
   };
 
-  const handleOpenRequestLocation = () => {
-    setActiveOverlay(ExclusiveOverlays.ADD_PERMISSION, OverlayType.EXCLUSIVE, true);
-  };
+  // const handleOpenRequestLocation = () => {
+  //   setActiveOverlay(ExclusiveOverlays.ADD_PERMISSION, OverlayType.EXCLUSIVE, true);
+  // };
 
-  if (isLoadingPermissions) return <div className="absolute inset-0 bg-white/90 flex items-center justify-center z-20">Loading Connections...</div>;
+  // if (isLoadingPermissions) return <></>;
   if (errorPermissions) return <div className="absolute inset-0 bg-white/90 flex items-center justify-center z-20 text-red-600">{errorPermissions}</div>;
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 bg-white p-4 shadow-lg rounded-t-lg z-20 h-2/3 flex flex-col">
+    <div className="absolute bottom-16 left-0 right-0 bg-white p-4 shadow-lg rounded-t-lg z-20 h-2/4 flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Beacon Hub</h2>
         <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
@@ -68,14 +66,14 @@ const BeaconHubOverlay: React.FC<BeaconHubOverlayProps> = ({ onClose, initialTab
       </div>
 
       {/* Top section: Current User Avatar & Request Location Button (Simplified for BeaconHub) */}
-      <div className="flex justify-end items-center mb-4"> {/* Align to right */}
+      {/* <div className="flex justify-end items-center mb-4">
         <button
           onClick={handleOpenRequestLocation}
           className="bg-blue-600 text-white px-4 py-2 rounded-md flex items-center space-x-2"
         >
           <span>+ Request Location</span>
         </button>
-      </div>
+      </div> */}
 
       {/* Tab Navigation */}
       <div className="flex border-b border-gray-200 mb-4">
@@ -97,6 +95,12 @@ const BeaconHubOverlay: React.FC<BeaconHubOverlayProps> = ({ onClose, initialTab
         >
           Pending Requests ({pendingRequests.length})
         </button>
+        <button
+          className={`flex-1 py-2 text-center ${activeTab === 'sent' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
+          onClick={() => setActiveTab('sent')}
+        >
+          Sent Requests ({sentRequests.length})
+        </button>
       </div>
 
       {/* Tab Content */}
@@ -112,18 +116,26 @@ const BeaconHubOverlay: React.FC<BeaconHubOverlayProps> = ({ onClose, initialTab
                     <div className="flex items-center space-x-3">
                       <img src={user.image || '/path/to/default-user.png'} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
                       <span>{user.name}</span>
+                      {user.status === 'paused' && <span className='text-red-500'>(Paused)</span>}
                     </div>
                     <div className="flex space-x-2">
-                        {user.currentLocation && (
+                      {user.currentLocation && (
                         <button
-                            onClick={() => handleCenterMap(user.currentLocation as LatLngLiteral)}
-                            className="p-1 bg-green-500 text-white rounded-full text-xs hover:bg-green-600"
-                            title="Center Map"
+                          onClick={() => handleCenterMap(user.currentLocation as LatLngLiteral)}
+                          className="p-1 bg-green-500 text-white rounded-full text-xs hover:bg-green-600"
+                          title="Center Map"
                         >
-                            <Icon name="map" size="16px" />
+                          <Icon name="map" size="16px" />
                         </button>
-                        )}
-                        {/* Add more options like "Stop Viewing" if needed */}
+                      )}
+                      <button
+                        onClick={() => deleteRequest(user._id)}
+                        className="p-1 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
+                        title="Decline"
+                      >
+                        <Icon name="delete" size="16px" />
+                      </button>
+                      {/* Add more options like "Stop Viewing" if needed */}
                     </div>
                   </li>
                 ))}
@@ -143,12 +155,30 @@ const BeaconHubOverlay: React.FC<BeaconHubOverlayProps> = ({ onClose, initialTab
                       <img src={share.viewer.image || '/path/to/default-user.png'} alt={share.viewer.name} className="w-8 h-8 rounded-full object-cover" />
                       <span>{share.viewer.name}</span>
                     </div>
+                    {share.status === 'active' &&
+                      <button
+                        onClick={() => stopSharing(share._id)}
+                        className="p-1 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
+                        title="Stop Sharing"
+                      >
+                        <Icon name="pause" size="16px" /> {/* Assuming 'pause' or 'stop' icon */}
+                      </button>
+                    }
+                    {share.status === 'paused' &&
+                      <button
+                        onClick={() => resumeSharing(share._id)}
+                        className="p-1 bg-green-500 text-white rounded-full text-xs hover:bg-red-600"
+                        title="Stop Sharing"
+                      >
+                        <Icon name="play" size="16px" /> {/* Assuming 'pause' or 'stop' icon */}
+                      </button>
+                    }
                     <button
-                      onClick={() => stopSharing(share._id)}
+                      onClick={() => deleteRequest(share._id)}
                       className="p-1 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
-                      title="Stop Sharing"
+                      title="Decline"
                     >
-                      <Icon name="pause" size="16px" /> {/* Assuming 'pause' or 'stop' icon */}
+                      <Icon name="delete" size="16px" />
                     </button>
                   </li>
                 ))}
@@ -183,6 +213,7 @@ const BeaconHubOverlay: React.FC<BeaconHubOverlayProps> = ({ onClose, initialTab
                       >
                         <Icon name="close" size="16px" />
                       </button>
+
                     </div>
                   </li>
                 ))}
@@ -190,6 +221,34 @@ const BeaconHubOverlay: React.FC<BeaconHubOverlayProps> = ({ onClose, initialTab
             )}
           </div>
         )}
+        {activeTab === 'sent' && (
+          <div>
+            {sentRequests.length === 0 ? (
+              <p className="text-gray-600 text-center mt-4">No pending requests.</p>
+            ) : (
+              <ul className="space-y-3">
+                {sentRequests.map(request => (
+                  <li key={request._id} className="flex items-center justify-between p-2 border rounded-md border-gray-200">
+                    <div className="flex items-center space-x-3">
+                      <img src={request.sharer.image || '/path/to/default-user.png'} alt={request.sharer.name} className="w-8 h-8 rounded-full object-cover" />
+                      <span>{request.sharer.name}</span>
+                    </div>
+                    <div className="space-x-2">
+                      <button
+                        onClick={() => deleteRequest(request._id)}
+                        className="p-1 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
+                        title="Decline"
+                      >
+                        <Icon name="delete" size="16px" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   );

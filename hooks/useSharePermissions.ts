@@ -11,6 +11,7 @@ interface SharedUser {
   email: string;
   image?: string;
   currentLocation?: LatLngLiteral; // Last known location, if available
+  status?: string;
 }
 
 // Represents an entry in 'Outgoing Locations'
@@ -26,12 +27,19 @@ interface PendingRequestEntry {
   requester: SharedUser; // The user who requested your location
   status: string; // 'pending_request'
 }
+// Represents an entry in 'Pending Requests'
+interface SentRequestEntry {
+  _id: string; // ID of the SharePermission document
+  sharer: SharedUser; // The user who requested your location
+  status: string; // 'pending_request'
+}
 
 
 export function useSharePermissions() {
   const [incomingLocations, setIncomingLocations] = useState<SharedUser[]>([]);
   const [outgoingLocations, setOutgoingLocations] = useState<OutgoingShareEntry[]>([]);
   const [pendingRequests, setPendingRequests] = useState<PendingRequestEntry[]>([]);
+  const [sentRequests, setSentRequests] = useState<SentRequestEntry[]>([]);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false); // Renamed to avoid clash with GeoFenceApi's isLoading
   const [errorPermissions, setErrorPermissions] = useState<string | null>(null);
 
@@ -52,10 +60,12 @@ export function useSharePermissions() {
       setIncomingLocations(data.incoming || []);
       setOutgoingLocations(data.outgoing || []);
       setPendingRequests(data.pending || []);
+      setSentRequests(data.sent || []);
 
-    } catch (err) {
-      console.error("Failed to fetch share permissions:", err);
-      setErrorPermissions(err?.message || "Failed to load share permissions.");
+    } catch (error) {
+      console.error("Failed to fetch share permissions:", error);
+      const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
+      setErrorPermissions(errorMessage || "Failed to load share permissions.");
     } finally {
       setIsLoadingPermissions(false);
     }
@@ -97,7 +107,8 @@ export function useSharePermissions() {
       return true;
     } catch (error) {
       console.error("Failed to send location request:", error);
-      setErrorPermissions(error.message || "Failed to send request.");
+      const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
+      setErrorPermissions(errorMessage || "Failed to send request.");
       return false;
     }
   }, [fetchPermissions]); // fetchPermissions is a dependency here
@@ -113,14 +124,16 @@ export function useSharePermissions() {
       });
       const res = await response.json();
       if (!response.ok) throw new Error(res.message || 'Failed to accept request');
-      
+
       // Optimistic update: move from pending to incoming
       setPendingRequests(prev => prev.filter(req => req._id !== permissionId));
-      setIncomingLocations(prev => [...prev, res.acceptedPermission.sharer]); // Assuming API returns the accepted permission with sharer details
+      setOutgoingLocations(prev => [...prev, res.acceptedPermission.viewerId]); // Assuming API returns the accepted permission with sharer details
+      fetchPermissions()
       return true;
     } catch (error) {
       console.error("Failed to accept request:", error);
-      setErrorPermissions(error.message || "Failed to accept request.");
+      const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
+      setErrorPermissions(errorMessage || "Failed to accept request.");
       return false;
     }
   }, []);
@@ -136,13 +149,15 @@ export function useSharePermissions() {
       });
       const res = await response.json();
       if (!response.ok) throw new Error(res.message || 'Failed to decline request');
-      
+
       // Optimistic update: remove from pending
       setPendingRequests(prev => prev.filter(req => req._id !== permissionId));
+      fetchPermissions()
       return true;
     } catch (error) {
       console.error("Failed to decline request:", error);
-      setErrorPermissions(error.message || "Failed to decline request.");
+      const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
+      setErrorPermissions(errorMessage || "Failed to decline request.");
       return false;
     }
   }, []);
@@ -158,13 +173,63 @@ export function useSharePermissions() {
       });
       const res = await response.json();
       if (!response.ok) throw new Error(res.message || 'Failed to stop sharing');
-      
+
       // Optimistic update: remove from outgoing
       setOutgoingLocations(prev => prev.filter(share => share._id !== permissionId));
+      fetchPermissions()
       return true;
     } catch (error) {
       console.error("Failed to stop sharing:", error);
-      setErrorPermissions(error.message || "Failed to stop sharing.");
+      const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
+      setErrorPermissions(errorMessage || "Failed to stop sharing.");
+      return false;
+    }
+  }, []);
+  
+  /**
+   * Resumes sharing location with a specific viewer.
+   * @param permissionId - The ID of the SharePermission document.
+   */
+  const resumeSharing = useCallback(async (permissionId: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/sharepermission/${permissionId}/resume`, { // Example API endpoint
+        method: 'PUT', // Or DELETE
+      });
+      const res = await response.json();
+      if (!response.ok) throw new Error(res.message || 'Failed to resume sharing');
+      
+      
+      // Optimistic update: remove from outgoing
+      // setOutgoingLocations(prev => prev.filter(share => share._id !== permissionId));
+      fetchPermissions()
+      return true;
+    } catch (error) {
+      console.error("Failed to resume sharing:", error);
+      const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
+      setErrorPermissions(errorMessage || "Failed to resume sharing.");
+      return false;
+    }
+  }, []);
+  /**
+   * Deletes sharing location with a specific viewer.
+   * @param permissionId - The ID of the SharePermission document.
+   */
+  const deleteRequest = useCallback(async (permissionId: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/sharepermission?id=${permissionId}`, { // Example API endpoint
+        method: 'DELETE', // Or DELETE
+      });
+      const res = await response.json();
+      if (!response.ok) throw new Error(res.message || 'Failed to delete sharing');
+
+      // Optimistic update: remove from outgoing
+      setSentRequests(prev => prev.filter(share => share._id !== permissionId));
+      fetchPermissions()
+      return true;
+    } catch (error) {
+      console.error("Failed to delete sharing:", error);
+      const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
+      setErrorPermissions(errorMessage || "Failed to delete sharing.");
       return false;
     }
   }, []);
@@ -174,6 +239,7 @@ export function useSharePermissions() {
     incomingLocations,
     outgoingLocations,
     pendingRequests,
+    sentRequests,
     isLoadingPermissions,
     errorPermissions,
     fetchPermissions,
@@ -181,5 +247,7 @@ export function useSharePermissions() {
     acceptRequest,
     declineRequest,
     stopSharing,
+    resumeSharing,
+    deleteRequest
   };
 }

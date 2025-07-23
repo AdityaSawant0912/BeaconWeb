@@ -32,7 +32,8 @@ const LazyIconComponents = {
   'settings-outline': lazy(() => import('react-icons/io5').then(mod => ({ default: mod.IoSettingsOutline }))),
   'add-circle': lazy(() => import('react-icons/io5').then(mod => ({ default: mod.IoAddCircleOutline }))),
   'close': lazy(() => import('react-icons/io5').then(mod => ({ default: mod.IoCloseSharp  }))),
-  'pause': lazy(() => import('react-icons/io5').then(mod => ({ default: mod.IoIosPause   }))),
+  'pause': lazy(() => import('react-icons/io5').then(mod => ({ default: mod.IoPause   }))),
+  'play': lazy(() => import('react-icons/io5').then(mod => ({ default: mod.IoPlay   }))),
 
   // Add more icons from different libraries as you need them
   // e.g., 'calendar': lazy(() => import('react-icons/fi').then(mod => ({ default: mod.FiCalendar }))), // Feather Icons
