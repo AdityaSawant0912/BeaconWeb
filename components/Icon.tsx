@@ -15,11 +15,12 @@ import React, { Suspense, lazy } from 'react';
 
 const LazyIconComponents = {
   // --- Font Awesome (from 'react-icons/fa') ---
-  'map-marker': lazy(() => import('react-icons/fa').then(mod => ({ default: mod.FaMapMarkerAlt }))),
+  'map': lazy(() => import('react-icons/fa').then(mod => ({ default: mod.FaMapMarkerAlt }))),
   'cog': lazy(() => import('react-icons/fa').then(mod => ({ default: mod.FaCog }))),
   'plus': lazy(() => import('react-icons/fa').then(mod => ({ default: mod.FaPlus }))),
   'user': lazy(() => import('react-icons/fa').then(mod => ({ default: mod.FaUser }))), // Example: for a user avatar
   'arrow-right': lazy(() => import('react-icons/fa').then(mod => ({ default: mod.FaArrowRight }))),
+  'check': lazy(() => import('react-icons/fa').then(mod => ({ default: mod.FaCheck  }))),
 
   // --- Material Design Icons (from 'react-icons/md') ---
   'settings-md': lazy(() => import('react-icons/md').then(mod => ({ default: mod.MdSettings }))),
@@ -31,6 +32,7 @@ const LazyIconComponents = {
   'settings-outline': lazy(() => import('react-icons/io5').then(mod => ({ default: mod.IoSettingsOutline }))),
   'add-circle': lazy(() => import('react-icons/io5').then(mod => ({ default: mod.IoAddCircleOutline }))),
   'close': lazy(() => import('react-icons/io5').then(mod => ({ default: mod.IoCloseSharp  }))),
+  'pause': lazy(() => import('react-icons/io5').then(mod => ({ default: mod.IoIosPause   }))),
 
   // Add more icons from different libraries as you need them
   // e.g., 'calendar': lazy(() => import('react-icons/fi').then(mod => ({ default: mod.FiCalendar }))), // Feather Icons

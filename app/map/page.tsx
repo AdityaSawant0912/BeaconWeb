@@ -2,14 +2,17 @@
 
 "use client";
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 
 // --- General UI Components ---
 import BottomNavigation from '@/components/bottomNavigation';
 import DetailsOverlay from '@/components/overlays/DetailsOverlay';
 import FencesOverlay from '@/components/overlays/FencesOverlay';
 import AddFenceOverlay from '@/components/overlays/AddFenceOverlay';
-import ShareOverlay from '@/components/overlays/defaults/ShareOverlay';
+import UserLocationAvatars from '@/components/overlays/UserLocationAvatars';
+import BeaconHubOverlay from '@/components/overlays/BeaconHubOverlay';
+import RequestLocationOverlay from '@/components/overlays/RequestLocationOverlay';
+
 
 // --- Map-related Components & Utilities ---
 import MapDisplay from '@/components/MapDisplay';
@@ -40,6 +43,17 @@ export default function Home() {
   // NEW: Consume drawing-related state/functions from useGeoFenceApi
   const { fences, addFence, drawingPolygonPaths, addDrawingPoint, removeLastDrawingPoint, removeDrawingPoints, deleteFence } = useGeoFenceApi();
 
+  // State to pass to BeaconHubOverlay for highlighting
+  const [highlightedBeaconUserId, setHighlightedBeaconUserId] = useState<string | undefined>(undefined);
+  const [initialBeaconHubTab, setInitialBeaconHubTab] = useState<'incoming' | 'outgoing' | 'pending' | undefined>(undefined);
+
+  // Callback to open BeaconHubOverlay and set highlight/tab
+  const openBeaconHub = useCallback((userId?: string, tab: 'incoming' | 'outgoing' | 'pending' = 'incoming') => {
+    setHighlightedBeaconUserId(userId);
+    setInitialBeaconHubTab(tab);
+    setActiveOverlay(ExclusiveOverlays.BEACON_HUB, OverlayType.EXCLUSIVE, true);
+  }, [setActiveOverlay]);
+  
   // --- Callbacks for Overlay Interactions ---
   // The handleAddFence is largely simplified here
   const handleAddFenceAndOverlayUpdate = useCallback(async (name: string, paths: LatLngLiteral[], color: string) => {
@@ -142,7 +156,15 @@ export default function Home() {
 
       {/* --- Overlay UI - Conditionally Rendered based on OverlayContext --- */}
       {isOverlayActive(DefaultOverlays.SHARE) && (
-        <ShareOverlay />
+        <UserLocationAvatars onOpenBeaconHub={openBeaconHub}/>
+      )}
+      
+      {isOverlayActive(ExclusiveOverlays.BEACON_HUB) && (
+        <BeaconHubOverlay
+          onClose={() => setActiveOverlay(ExclusiveOverlays.BEACON_HUB, OverlayType.EXCLUSIVE, false)}
+          initialTab={initialBeaconHubTab}
+          highlightUserId={highlightedBeaconUserId}
+        />
       )}
 
       {isOverlayActive(ExclusiveOverlays.DETAILS) && (
@@ -165,6 +187,12 @@ export default function Home() {
           onSave={handleAddFenceAndOverlayUpdate} // Use the new combined handler
           drawingPaths={drawingPolygonPaths} // Pass drawing state from useGeoFenceApi
           onRemoveLastPoint={removeLastDrawingPoint} // Pass remove point from useGeoFenceApi
+        />
+      )}
+      
+      {isOverlayActive(ExclusiveOverlays.ADD_PERMISSION) && (
+        <RequestLocationOverlay
+          onClose={() => setActiveOverlay(ExclusiveOverlays.ADD_PERMISSION, OverlayType.EXCLUSIVE, false)}
         />
       )}
 

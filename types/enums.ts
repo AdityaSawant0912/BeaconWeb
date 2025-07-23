@@ -7,7 +7,8 @@ export enum ExclusiveOverlays {
   FENCES = 'fences',
   ADD_FENCE = 'addFence',
   ADD_PERMISSION = 'addPermission',
-  SETTINGS = 'settings'
+  SETTINGS = 'settings',
+  BEACON_HUB = 'beaconHub'
 }
 
 // Define the types of overlays
