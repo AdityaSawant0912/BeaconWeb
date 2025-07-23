@@ -17,13 +17,7 @@ declare global {
     interface WebViewMessage {
         data: object
     }
-
-    // Redefine GeoFence to use 'paths' for polygon vertices
-    export interface GeoFence {
-        id: string;
-        name: string;
-        paths: LatLngLiteral[]; // Array of coordinates for the polygon
-        color: string;
-    }
     var mongoose: { conn: typeof mongoose | null; promise: Promise<typeof mongoose> | mongoose | null } | undefined;
+    
+    type APIError = unknown
 }
