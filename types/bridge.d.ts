@@ -21,9 +21,12 @@ export interface NativeErrorArgs {
 export interface NativeMessageArgs {
   message: string;
 }
+export interface NativeArgs {
+  [key: string]: value;
+}
 
 // Union type for all possible argument shapes received from native
-export type NativeBridgeIncomingArgs = NativeLocationArgs | NativeErrorArgs | NativeMessageArgs | Record<string, any>;
+export type NativeBridgeIncomingArgs = NativeLocationArgs | NativeErrorArgs | NativeMessageArgs | Record<string, NativeArgs>;
 
 // Type for the JavaScript functions that will be called by the native bridge
 export type NativeBridgeCallback = (args: NativeBridgeIncomingArgs) => void;
@@ -41,7 +44,7 @@ export interface IncomingNativeBridgeMessage {
 
 // Type for arguments when calling a native function from web (e.g., getLocation)
 // This should be broader as arguments can be anything
-export type CallNativeFunctionArgs = Record<string, any>;
+export type CallNativeFunctionArgs = Record<string, NativeArgs>;
 
 // Extend the Window interface to include ReactNativeWebView for WebView communication
 declare global {
@@ -50,35 +53,4 @@ declare global {
       postMessage: (message: string) => void;
     };
   }
-}
-
-// New: Arguments for Web -> Native functions
-export interface NativeAuthArgs {
-    authToken: string;
-    refreshToken?: string;
-}
-
-export interface NativeControlLocationArgs {
-    status: 'paused' | 'resumed';
-    interval?: number; // In minutes
-}
-
-
-// Interface for functions Native calls on Web (i.e., passed to useNativeWebBridge from WebViewScreen)
-export interface NativeFunctionMap {
-    logMessage: (args: NativeMessageArgs) => void;
-    setLocation: (args: NativeLocationArgs) => void;
-    reportNativeError: (args: NativeErrorArgs) => void;
-    // Add any other functions Native calls on Web here
-}
-
-// Interface for functions Web calls on Native (i.e., exposed via NativeBridgeContext)
-export interface WebBridgeCallableFunctions {
-    center: LatLngLiteral;
-    logMessage: (message: string) => void;
-    reportNativeError: (regarding: string, error: string) => void;
-    saveAuthToken: (authToken: string, refreshToken?: string) => void;
-    controlLocationSharing: (status: 'paused' | 'resumed', interval?: number) => void;
-    setCenterState: React.Dispatch<React.SetStateAction<LatLngLiteral>>; // If you want to allow direct state updates
-    getNativeLocation: () => void;
 }
