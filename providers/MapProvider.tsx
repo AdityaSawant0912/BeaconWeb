@@ -50,10 +50,10 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children, isAddFenceOv
         // Call the addDrawingPoint function provided by useGeoFenceApi (via Home)
         onMapClickForDrawing(clickedLocation);
       } else {
-        setLocation(clickedLocation);
+        // setLocation(clickedLocation);
       }
     }
-  }, [isAddFenceOverlayActive, onMapClickForDrawing, setLocation]); // Add onMapClickForDrawing as dependency
+  }, [isAddFenceOverlayActive, onMapClickForDrawing]); // Add onMapClickForDrawing as dependency
 
   const contextValue = useMemo(() => ({
     center,
