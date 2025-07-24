@@ -29,6 +29,7 @@ import { useNativeBridge } from '@/context/NativeBridgeContext'; // Assuming thi
 // --- Types & Enums ---
 import { LatLngLiteral } from '@/types/map';
 import { DefaultOverlays, ExclusiveOverlays, OverlayType } from '@/types/enums';
+import { NativeArgs } from '@/types/bridge';
 
 export default function Home() {
     // --- Consume Contexts ---
@@ -39,10 +40,7 @@ export default function Home() {
     const {
         center, // Current map center from native (can be ignored if MapDisplay handles its own center)
         logMessage: logMessageToNative,
-        reportNativeError: reportErrorToNative,
-        saveAuthToken, // Function to send auth tokens to native
-        controlLocationSharing, // Function to control background location sharing
-        getNativeLocation // Function to request foreground location from native
+        callBridgeFunction,
     } = useNativeBridge();
 
     // State to pass to BeaconHubOverlay for highlighting
@@ -74,41 +72,41 @@ export default function Home() {
     // Example handler for saving auth tokens (would typically be called from a login component)
     const handleLoginSuccess = useCallback((authToken: string, refreshToken?: string) => {
         // This function would be called by your login flow in the web app
-        saveAuthToken(authToken, refreshToken);
+        callBridgeFunction('saveAuthToken', {authToken, refreshToken} as NativeArgs)
         logMessageToNative("Web app successfully sent auth tokens to native.");
         // You might then proceed to hide login UI, show main map, etc.
-    }, [saveAuthToken, logMessageToNative]);
+    }, [callBridgeFunction, logMessageToNative]);
 
     // Handler for toggling background location sharing
     const handleToggleLocationSharing = useCallback(() => {
         if (isLocationSharingActive) {
             // Pause sharing
-            controlLocationSharing('paused');
+            callBridgeFunction('controlLocationSharing', {status: 'paused', interval: locationPingInterval} as NativeArgs)
             setIsLocationSharingActive(false);
             logMessageToNative("Web app requested native to pause location sharing.");
         } else {
             // Resume sharing
-            controlLocationSharing('resumed', locationPingInterval);
+            callBridgeFunction('controlLocationSharing', {status: 'resumed', interval: locationPingInterval} as NativeArgs)
             setIsLocationSharingActive(true);
             logMessageToNative(`Web app requested native to resume location sharing at ${locationPingInterval} min intervals.`);
         }
-    }, [isLocationSharingActive, controlLocationSharing, locationPingInterval, logMessageToNative]);
+    }, [isLocationSharingActive, callBridgeFunction, locationPingInterval, logMessageToNative]);
 
     // Handler for changing the ping interval
     const handleChangeInterval = useCallback((newInterval: number) => {
         setLocationPingInterval(newInterval);
         if (isLocationSharingActive) {
             // If already active, update with new interval immediately
-            controlLocationSharing('resumed', newInterval);
+            callBridgeFunction('controlLocationSharing', {status: 'resumed', interval: newInterval} as NativeArgs)
             logMessageToNative(`Web app requested native to update location sharing interval to ${newInterval} mins.`);
         }
-    }, [isLocationSharingActive, controlLocationSharing, logMessageToNative]);
+    }, [isLocationSharingActive, callBridgeFunction, logMessageToNative]);
 
     // Handler for requesting current location (e.g., for a "Find Me" button)
     const handleGetMyCurrentLocation = useCallback(() => {
-        getNativeLocation();
+        callBridgeFunction('getLocation', {} as NativeArgs)
         logMessageToNative("Web app requested native for current foreground location.");
-    }, [getNativeLocation, logMessageToNative]);
+    }, [callBridgeFunction, logMessageToNative]);
 
     return (
         <div className='flex flex-col h-screen w-screen relative'>

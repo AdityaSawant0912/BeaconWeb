@@ -51,6 +51,7 @@ export const NativeBridgeProvider: React.FC<NativeBridgeProviderProps> = ({ chil
     callBridgeFunction, // Exposed function to call native
     logMessage: (message: string) => logMessage({ message } as NativeMessageArgs), // Exposed simplified logMessage
     reportNativeError: (regarding: string, error: string) => reportNativeError({ regarding, error } as NativeErrorArgs), // Exposed simplified reportNativeError
+    setCenterState: setCenterState
   }), [center, setLocation, callBridgeFunction, logMessage, reportNativeError]);
 
   return (
