@@ -51,3 +51,34 @@ declare global {
     };
   }
 }
+
+// New: Arguments for Web -> Native functions
+export interface NativeAuthArgs {
+    authToken: string;
+    refreshToken?: string;
+}
+
+export interface NativeControlLocationArgs {
+    status: 'paused' | 'resumed';
+    interval?: number; // In minutes
+}
+
+
+// Interface for functions Native calls on Web (i.e., passed to useNativeWebBridge from WebViewScreen)
+export interface NativeFunctionMap {
+    logMessage: (args: NativeMessageArgs) => void;
+    setLocation: (args: NativeLocationArgs) => void;
+    reportNativeError: (args: NativeErrorArgs) => void;
+    // Add any other functions Native calls on Web here
+}
+
+// Interface for functions Web calls on Native (i.e., exposed via NativeBridgeContext)
+export interface WebBridgeCallableFunctions {
+    center: LatLngLiteral;
+    logMessage: (message: string) => void;
+    reportNativeError: (regarding: string, error: string) => void;
+    saveAuthToken: (authToken: string, refreshToken?: string) => void;
+    controlLocationSharing: (status: 'paused' | 'resumed', interval?: number) => void;
+    setCenterState: React.Dispatch<React.SetStateAction<LatLngLiteral>>; // If you want to allow direct state updates
+    getNativeLocation: () => void;
+}
