@@ -3,6 +3,8 @@ import dbconnect from '@/lib/dbconnect';
 import { NextRequest, NextResponse } from 'next/server';
 import User from '@/models/Users'; // Assuming User model is available
 import Fence from '@/models/Fences'; // Assuming Fence model is defined
+import SharePermission from '@/models/SharePermission';
+import { PopulatedIncomingSharePermission } from '@/types/sharing';
 
 /**
  * @route POST /api/fence
@@ -75,7 +77,31 @@ export async function GET() {
             // Retrieve all fence records created by the user
             const fences = await Fence.find({ createdBy: user._id });
 
-            return NextResponse.json({ fences });
+            const incomingPermissions = await SharePermission.find({
+                viewerId: user._id,
+                status: {
+                    $in: ['active', 'paused']
+                }
+            }).populate('sharerId', '_id name email image');
+
+            const incomingPromises = incomingPermissions.map(async (permission: PopulatedIncomingSharePermission) => {
+                const sharerUser = permission.sharerId; // This is the populated User object
+                if (!sharerUser) return null; // Handle case where sharer user might not exist anymore
+
+                const fences = await Fence.find({ createdBy: sharerUser._id });;
+
+                return {
+                    sharerUser,
+                    fences
+                };
+            });
+            
+            const incomingFences = (await Promise.all(incomingPromises)).filter(Boolean); 
+            
+            
+
+
+            return NextResponse.json({ fences, incomingFences });
 
         } catch (error) {
             console.error("Database Error in GET /api/fence:", error);
