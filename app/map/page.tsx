@@ -29,13 +29,13 @@ import { useNativeBridge } from '@/context/NativeBridgeContext'; // Assuming thi
 // --- Types & Enums ---
 import { LatLngLiteral } from '@/types/map';
 import { DefaultOverlays, ExclusiveOverlays, OverlayType } from '@/types/enums';
-import { NativeArgs } from '@/types/bridge';
+import { CallNativeFunctionArgs, NativeArgs } from '@/types/bridge';
 import { useSession } from 'next-auth/react';
 
 export default function Home() {
   // --- Consume Contexts ---
   const { isOverlayActive, setActiveOverlay } = useOverlayManager();
-  const { fences, addFence, drawingPolygonPaths, addDrawingPoint, removeLastDrawingPoint, removeDrawingPoints, deleteFence } = useGeoFenceApi();
+  const { fences, incomingFences, addFence, drawingPolygonPaths, addDrawingPoint, removeLastDrawingPoint, removeDrawingPoints, deleteFence } = useGeoFenceApi();
   const { data: session, status } = useSession();
   // NEW: Consume NativeBridgeContext to access native communication functions
   const {
@@ -50,7 +50,7 @@ export default function Home() {
 
   // --- Example State for Location Sharing Control ---
   const [isLocationSharingActive, setIsLocationSharingActive] = useState(false);
-  const [locationPingInterval, setLocationPingInterval] = useState<number>(30); // Default 30 mins
+  const [locationPingInterval, setLocationPingInterval] = useState<number>(1); // Default 30 mins
 
   // Callback to open BeaconHubOverlay and set highlight/tab
   const openBeaconHub = useCallback((userId?: string, tab: 'incoming' | 'outgoing' | 'pending' = 'incoming') => {
@@ -71,12 +71,12 @@ export default function Home() {
   // --- NEW: Handlers for Native Bridge Functions ---
 
   // Example handler for saving auth tokens (would typically be called from a login component)
-  const handleLoginSuccess = useCallback((authToken: string, refreshToken?: string) => {
-    // This function would be called by your login flow in the web app
-    callBridgeFunction('saveAuthToken', { authToken, refreshToken } as NativeArgs)
-    logMessageToNative("Web app successfully sent auth tokens to native.");
-    // You might then proceed to hide login UI, show main map, etc.
-  }, [callBridgeFunction, logMessageToNative]);
+  // const handleLoginSuccess = useCallback((authToken: string, refreshToken?: string) => {
+  //   // This function would be called by your login flow in the web app
+  //   callBridgeFunction('saveAuthToken', { authToken, refreshToken } as NativeArgs)
+  //   logMessageToNative("Web app successfully sent auth tokens to native.");
+  //   // You might then proceed to hide login UI, show main map, etc.
+  // }, [callBridgeFunction, logMessageToNative]);
 
   // Handler for toggling background location sharing
   const handleToggleLocationSharing = useCallback(() => {
@@ -109,21 +109,17 @@ export default function Home() {
     logMessageToNative("Web app requested native for current foreground location.");
   }, [callBridgeFunction, logMessageToNative]);
 
-  useEffect(() => {
-    console.log(session);
-
-    // callBridgeFunction('saveAuthToken', {authToken, refreshToken} as NativeArgs)
-  })
 
   useEffect(() => {
     if (status === 'authenticated' && session?.accessToken) {
       console.log("Session authenticated, sending access token to native.");
       // Ensure you pass the accessToken and optionally refreshToken if you decide to include it later
-      callBridgeFunction('saveAuthToken', {authToken: session.accessToken, refreshToken: ''} as NativeArgs)
+      callBridgeFunction('saveAuthToken', { authToken: session.accessToken, refreshToken: '' } as NativeArgs)
       logMessageToNative("Web app successfully sent access token to native.");
     } else if (status === 'unauthenticated') {
       console.log("Session unauthenticated, no tokens to send or potentially clear.");
       // Optional: Call saveAuthToken("", "") to clear tokens on native if user logs out
+      callBridgeFunction('saveAuthToken', { authToken: '', refreshToken: '' } as NativeArgs)
     }
   }, [session, status, logMessageToNative, callBridgeFunction]);
 
@@ -170,6 +166,47 @@ export default function Home() {
                   />
                 </React.Fragment>
               );
+            })}
+
+            {incomingFences.map(incomingFence => {
+              if (incomingFence.fences.length === 0) return <></>
+              
+              return incomingFence.fences.map(fence => {
+                const centroid = calculatePolygonCentroid(fence.paths);
+                console.log(centroid);
+                return (
+                  <React.Fragment key={fence._id}>
+                    <Polygon
+                      paths={fence.paths}
+                      options={{
+                        strokeColor: fence.color,
+                        strokeOpacity: 0.8,
+                        strokeWeight: 2,
+                        fillColor: fence.color,
+                        fillOpacity: 0.35,
+                        geodesic: true,
+                      }}
+                    />
+                    <Marker
+                      position={centroid}
+                      label={{
+                        text: incomingFence.sharerUser.name + " > " +fence.name,
+                        color: 'black',
+                        fontWeight: 'bold',
+                        fontSize: '14px',
+                      }}
+                      options={{
+                        icon: {
+                          path: google.maps.SymbolPath.CIRCLE,
+                          scale: 0,
+                        },
+                        clickable: false,
+                        draggable: false,
+                      }}
+                    />
+                  </React.Fragment>
+                );
+              })
             })}
 
             {/* Render the polygon currently being drawn and its point markers,
@@ -260,10 +297,10 @@ export default function Home() {
       <div className="absolute top-45 left-4 bg-white p-2 rounded shadow-md z-50">
         <h3 className="font-bold mb-2">Native Controls (Web)</h3>
         <button
-          onClick={() => handleLoginSuccess("your_mock_auth_token_123", "your_mock_refresh_token_xyz")}
+          onClick={() => callBridgeFunction('pingLocation', {} as CallNativeFunctionArgs)}
           className="bg-blue-500 text-white px-3 py-1 rounded mb-2 mr-2"
         >
-          Mock Login (Send Auth)
+          Send Mock Location
         </button>
         <button
           onClick={handleGetMyCurrentLocation}

@@ -1,5 +1,6 @@
 import { LatLngLiteral } from "@/types/map";
 
+
 export const calculatePolygonCentroid = (paths: LatLngLiteral[]): LatLngLiteral => {
   if (paths.length === 0) {
     return { lat: 0, lng: 0 };

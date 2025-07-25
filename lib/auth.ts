@@ -53,7 +53,6 @@ export const authOptions: NextAuthOptions = {
 
 
       // The `session` object is what `useSession()` will return on the client.
-      console.log("Session Callback - Session:", session); // Inspect this to see if accessToken is present
 
       return session; // Always return the session
     },
@@ -85,7 +84,6 @@ export const authOptions: NextAuthOptions = {
 
       // The `token` object is what NextAuth uses internally.
       // Ensure `accessToken` is set on this token object.
-      console.log("JWT Callback - Token:", token); // Inspect this to see if accessToken is present
 
       return token; // Always return the token
     },

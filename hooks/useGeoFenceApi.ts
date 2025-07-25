@@ -1,6 +1,6 @@
 // hooks/useGeoFenceApi.ts
 import { useState, useEffect, useCallback } from 'react';
-import { GeoFence, LatLngLiteral } from '@/types/map'; // Ensure LatLngLiteral is imported
+import { GeoFence, IncomingGeoFence, LatLngLiteral } from '@/types/map'; // Ensure LatLngLiteral is imported
 
 /**
  * A custom React hook for managing GeoFence data, including fetching from and adding to an API.
@@ -15,6 +15,7 @@ import { GeoFence, LatLngLiteral } from '@/types/map'; // Ensure LatLngLiteral i
  */
 export function useGeoFenceApi() {
   const [fences, setFences] = useState<GeoFence[]>([]);
+  const [incomingFences, setIncomingFences] = useState<IncomingGeoFence[]>([]);
   // --- NEW STATE: Local state for the polygon currently being drawn ---
   const [drawingPolygonPaths, setDrawingPolygonPaths] = useState<LatLngLiteral[]>([]);
 
@@ -32,6 +33,7 @@ export function useGeoFenceApi() {
         console.log("Fetched fences:", res);
         if (res.fences) {
           setFences(res.fences);
+          setIncomingFences(res.incomingFences)
         }
       } catch (error) {
         console.error("Failed to fetch fences:", error);
@@ -147,6 +149,7 @@ export function useGeoFenceApi() {
 
   return {
     fences,
+    incomingFences,
     drawingPolygonPaths, // Expose the current drawing paths
     setFences, // Still expose this for flexibility if needed externally
     addFence,

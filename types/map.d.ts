@@ -1,4 +1,5 @@
 // types/map.d.ts
+import { PopulatedUserSubset } from './sharing'
 
 /**
  * Represents a latitude and longitude pair.
@@ -16,5 +17,10 @@ export interface GeoFence {
   name: string;
   paths: LatLngLiteral[];
   color: string;
+}
+
+export interface IncomingGeoFence {
+  sharerUser: PopulatedUserSubset
+  fences: GeoFence[];
 }
 
