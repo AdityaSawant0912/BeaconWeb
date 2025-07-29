@@ -8,6 +8,7 @@ import { CallNativeFunctionArgs } from '@/types/bridge';
 // Define the shape of the Native Bridge Context
 interface NativeBridgeContextType {
   center: LatLngLiteral;
+  backgroundLocationStatus: boolean;
   setLocation: (location: LatLngLiteral) => void;
   callBridgeFunction: (functionName: string, args: CallNativeFunctionArgs) => void;
   logMessage: (message: string) => void;

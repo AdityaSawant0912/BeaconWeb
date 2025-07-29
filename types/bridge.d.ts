@@ -21,12 +21,15 @@ export interface NativeErrorArgs {
 export interface NativeMessageArgs {
   message: string;
 }
+export interface BackgroundLocationStatusArgs {
+  status: number;
+}
 export interface NativeArgs {
   [key: string]: value;
 }
 
 // Union type for all possible argument shapes received from native
-export type NativeBridgeIncomingArgs = NativeLocationArgs | NativeErrorArgs | NativeMessageArgs | Record<string, NativeArgs>;
+export type NativeBridgeIncomingArgs = NativeLocationArgs | NativeErrorArgs | NativeMessageArgs | BackgroundLocationStatusArgs | Record<string, NativeArgs>;
 
 // Type for the JavaScript functions that will be called by the native bridge
 export type NativeBridgeCallback = (args: NativeBridgeIncomingArgs) => void;

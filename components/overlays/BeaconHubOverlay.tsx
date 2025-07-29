@@ -26,7 +26,7 @@ const BeaconHubOverlay: React.FC<BeaconHubOverlayProps> = ({ onClose, initialTab
     declineRequest,
     stopSharing,
     resumeSharing,
-    deleteRequest
+    deleteRequest,
   } = useSharePermissions();
 
   const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing' | 'pending' | 'sent'>(initialTab || 'incoming');
