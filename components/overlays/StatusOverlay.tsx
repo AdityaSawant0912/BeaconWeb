@@ -5,7 +5,6 @@ type StatusOverlayProps = object
 
 const StatusOverlay: React.FC<StatusOverlayProps> = () => {
     const { isNativeSharingLocationActive } = useSharePermissions()
-    console.log('isNativeSharingLocationActive', isNativeSharingLocationActive);
     
     return (
         <div className={`absolute top-16 p-1.5 bg-white/30 backdrop-blur-sm shadow-xl z-20 right-4 rounded-2xl flex flex-row gap-1.5`}>

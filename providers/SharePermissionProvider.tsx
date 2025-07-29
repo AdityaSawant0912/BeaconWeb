@@ -26,7 +26,6 @@ export const SharePermissionsProvider: React.FC<SharePermissionsProviderProps> =
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      console.log("Fetched share permissions:", data);
 
       setIncomingLocations(data.incoming || []);
       setOutgoingLocations(data.outgoing || []);
@@ -54,7 +53,6 @@ export const SharePermissionsProvider: React.FC<SharePermissionsProviderProps> =
 
     // This is the crucial check to avoid unnecessary state updates and re-renders
     if (anyActiveShares !== isNativeSharingLocationActive) {
-      console.log(`[SharePermissionsContext] Updating native sharing status: ${anyActiveShares ? 'Active' : 'Paused'}`);
       setIsNativeSharingLocationActive(anyActiveShares);
     }
   }, [outgoingLocations, isNativeSharingLocationActive]); // Depend on both to ensure logic re-runs if either changes, though `outgoingLocations` is the primary trigger.
@@ -75,7 +73,6 @@ export const SharePermissionsProvider: React.FC<SharePermissionsProviderProps> =
         throw new Error(res.message || `HTTP error! status: ${response.status}`);
       }
 
-      console.log("Location request sent:", res.message);
       fetchPermissions(); // Re-fetch all permissions to update the lists
 
       return true;
