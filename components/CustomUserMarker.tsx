@@ -1,6 +1,6 @@
 // components/CustomUserMarker.tsx
 import React from 'react';
-import { OverlayView, OverlayViewFadingTransition } from '@react-google-maps/api';
+import { OverlayView } from '@react-google-maps/api';
 
 interface CustomUserMarkerProps {
   position: google.maps.LatLngLiteral;
