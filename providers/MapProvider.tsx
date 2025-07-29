@@ -33,12 +33,11 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children, isAddFenceOv
     } else {
       navigator.geolocation.getCurrentPosition((pos) => {
         setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       }, (e) => { console.log(e); }, {
         enableHighAccuracy: true,
       });
     }
-  }, [callBridgeFunction, setLocation, setCenter]);
+  }, [callBridgeFunction, setLocation]);
 
   const mapOnClick = useCallback((e: google.maps.MapMouseEvent) => {
     const lat = e.latLng?.lat();
