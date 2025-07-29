@@ -6,7 +6,7 @@ import React, { useState, useCallback, useMemo, ReactNode } from 'react';
 import { NativeBridgeContext } from '../context/NativeBridgeContext'; // Correct relative path
 import useNativeWebBridge from '@/hooks/useNativeWebBridge'; // Your existing hook
 import { LatLngLiteral } from '@/types/map'; // Only LatLngLiteral from types/map
-import { NativeFunctionMap, NativeBridgeIncomingArgs, NativeLocationArgs, NativeErrorArgs, NativeMessageArgs } from '@/types/bridge'; // All bridge-related types
+import { NativeFunctionMap, NativeBridgeIncomingArgs, NativeLocationArgs, NativeErrorArgs, NativeMessageArgs, BackgroundLocationStatusArgs } from '@/types/bridge'; // All bridge-related types
 
 interface NativeBridgeProviderProps {
   children: ReactNode;
@@ -15,7 +15,8 @@ interface NativeBridgeProviderProps {
 export const NativeBridgeProvider: React.FC<NativeBridgeProviderProps> = ({ children }) => {
   // --- This is the central source for map center (location) ---
   const [center, setCenterState] = useState<LatLngLiteral>({ lat: 0, lng: 0 });
-
+  
+  const [backgroundLocationStatus, setBackgroundLocationStatus] = useState<boolean>(false);
   // --- Callbacks to be invoked by the Native Bridge ---
   const logMessage = useCallback((args: NativeBridgeIncomingArgs) => {
     const messageArgs = args as NativeMessageArgs;
@@ -32,12 +33,17 @@ export const NativeBridgeProvider: React.FC<NativeBridgeProviderProps> = ({ chil
     const locationArgs = args as NativeLocationArgs;
     setCenterState({ lat: locationArgs.lat, lng: locationArgs.lng });
   }, []);
+  const reportBackgroundLocationStatus = useCallback((args: NativeBridgeIncomingArgs) => {
+    const backgroundLocationStatusArgs = args as BackgroundLocationStatusArgs;
+    setBackgroundLocationStatus(backgroundLocationStatusArgs.status == 2)
+  }, []);
 
   // --- Map of functions for useNativeWebBridge ---
   const functionMap: NativeFunctionMap = useMemo(() => ({
     logMessage,
     setLocation, // This setLocation is registered with the bridge
     reportNativeError,
+    reportBackgroundLocationStatus
   }), [logMessage, setLocation, reportNativeError]);
 
   // --- Initialize your existing Native Web Bridge Hook ---
@@ -47,6 +53,7 @@ export const NativeBridgeProvider: React.FC<NativeBridgeProviderProps> = ({ chil
   // Memoize the context value that will be provided to consumers
   const contextValue = useMemo(() => ({
     center, // The central map center
+    backgroundLocationStatus,
     setLocation: (location: LatLngLiteral) => setLocation(location as NativeLocationArgs), // Exposed setLocation that updates central 'center'
     callBridgeFunction, // Exposed function to call native
     logMessage: (message: string) => logMessage({ message } as NativeMessageArgs), // Exposed simplified logMessage

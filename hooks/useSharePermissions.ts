@@ -40,23 +40,24 @@ export function useSharePermissions() {
   const [outgoingLocations, setOutgoingLocations] = useState<OutgoingShareEntry[]>([]);
   const [pendingRequests, setPendingRequests] = useState<PendingRequestEntry[]>([]);
   const [sentRequests, setSentRequests] = useState<SentRequestEntry[]>([]);
-  const [isLoadingPermissions, setIsLoadingPermissions] = useState(false); // Renamed to avoid clash with GeoFenceApi's isLoading
+  const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
   const [errorPermissions, setErrorPermissions] = useState<string | null>(null);
+
+  // NEW STATE: To track if native background location sharing should be active
+  const [isNativeSharingLocationActive, setIsNativeSharingLocationActive] = useState(false);
+
 
   const fetchPermissions = useCallback(async () => {
     setIsLoadingPermissions(true);
     setErrorPermissions(null);
     try {
-      // API endpoint to fetch all related permissions for the current user
-      const response = await fetch('/api/sharepermission', { method: 'GET' }); // Corrected typo here to 'sharepermission'
+      const response = await fetch('/api/sharepermission', { method: 'GET' });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
       console.log("Fetched share permissions:", data);
 
-      // Assuming the API returns an object like:
-      // { incoming: SharedUser[], outgoing: OutgoingShareEntry[], pending: PendingRequestEntry[] }
       setIncomingLocations(data.incoming || []);
       setOutgoingLocations(data.outgoing || []);
       setPendingRequests(data.pending || []);
@@ -73,8 +74,21 @@ export function useSharePermissions() {
 
   useEffect(() => {
     fetchPermissions();
-    // Consider polling or WebSockets here for real-time updates if needed
   }, [fetchPermissions]);
+
+  // NEW useEffect: Listen to outgoingLocations to update native sharing status
+  useEffect(() => {
+    // Check if there's at least one active outgoing location share
+    const anyActiveShares = outgoingLocations.some(
+      (entry) => entry.status === 'active'
+    );
+
+    // Update the state
+    if (anyActiveShares !== isNativeSharingLocationActive) {
+      console.log(`[useSharePermissions] Updating native sharing status: ${anyActiveShares ? 'Active' : 'Paused'}`);
+      setIsNativeSharingLocationActive(anyActiveShares);
+    }
+  }, [outgoingLocations, isNativeSharingLocationActive]); // Dependency on outgoingLocations and its own state
 
 
   /**
@@ -85,12 +99,12 @@ export function useSharePermissions() {
    */
   const requestLocation = useCallback(async (sharerEmail: string): Promise<boolean> => {
     try {
-      const response = await fetch('/api/sharing', { // This endpoint for sending request
+      const response = await fetch('/api/sharing', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ sharerEmail: sharerEmail }) // Ensure backend expects sharerEmail
+        body: JSON.stringify({ sharerEmail: sharerEmail })
       });
 
       const res = await response.json();
@@ -100,8 +114,6 @@ export function useSharePermissions() {
       }
 
       console.log("Location request sent:", res.message);
-      // Assuming the backend returns the new pending request or success status
-      // You might need to refetch permissions or optimistically add to pendingRequests here
       fetchPermissions(); // Re-fetch all permissions to update the lists
 
       return true;
@@ -111,7 +123,7 @@ export function useSharePermissions() {
       setErrorPermissions(errorMessage || "Failed to send request.");
       return false;
     }
-  }, [fetchPermissions]); // fetchPermissions is a dependency here
+  }, [fetchPermissions]);
 
   /**
    * Accepts a pending location request.
@@ -119,16 +131,18 @@ export function useSharePermissions() {
    */
   const acceptRequest = useCallback(async (permissionId: string): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/sharepermission/${permissionId}/accept`, { // Example API endpoint
+      const response = await fetch(`/api/sharepermission/${permissionId}/accept`, {
         method: 'PUT',
       });
       const res = await response.json();
       if (!response.ok) throw new Error(res.message || 'Failed to accept request');
 
-      // Optimistic update: move from pending to incoming
+      // Optimistic update: move from pending to outgoing (as you become the sharer)
       setPendingRequests(prev => prev.filter(req => req._id !== permissionId));
-      setOutgoingLocations(prev => [...prev, res.acceptedPermission.viewerId]); // Assuming API returns the accepted permission with sharer details
-      fetchPermissions()
+      // Assuming res.acceptedPermission contains the newly created outgoing permission details
+      // You might need to adjust this based on your API's actual response
+      // For now, rely on refetch for full accuracy
+      fetchPermissions();
       return true;
     } catch (error) {
       console.error("Failed to accept request:", error);
@@ -136,7 +150,7 @@ export function useSharePermissions() {
       setErrorPermissions(errorMessage || "Failed to accept request.");
       return false;
     }
-  }, []);
+  }, [fetchPermissions]); // Added fetchPermissions as dependency
 
   /**
    * Declines a pending location request.
@@ -144,15 +158,15 @@ export function useSharePermissions() {
    */
   const declineRequest = useCallback(async (permissionId: string): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/sharepermission/${permissionId}/decline`, { // Example API endpoint
-        method: 'PUT', // Or DELETE depending on your API design
+      const response = await fetch(`/api/sharepermission/${permissionId}/decline`, {
+        method: 'PUT',
       });
       const res = await response.json();
       if (!response.ok) throw new Error(res.message || 'Failed to decline request');
 
       // Optimistic update: remove from pending
       setPendingRequests(prev => prev.filter(req => req._id !== permissionId));
-      fetchPermissions()
+      fetchPermissions();
       return true;
     } catch (error) {
       console.error("Failed to decline request:", error);
@@ -160,23 +174,27 @@ export function useSharePermissions() {
       setErrorPermissions(errorMessage || "Failed to decline request.");
       return false;
     }
-  }, []);
+  }, [fetchPermissions]);
 
   /**
-   * Stops sharing location with a specific viewer.
+   * Stops sharing location with a specific viewer (sets status to 'paused' or removes).
    * @param permissionId - The ID of the SharePermission document.
    */
   const stopSharing = useCallback(async (permissionId: string): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/sharepermission/${permissionId}/stop`, { // Example API endpoint
-        method: 'PUT', // Or DELETE
+      const response = await fetch(`/api/sharepermission/${permissionId}/stop`, {
+        method: 'PUT',
       });
       const res = await response.json();
       if (!response.ok) throw new Error(res.message || 'Failed to stop sharing');
 
-      // Optimistic update: remove from outgoing
-      setOutgoingLocations(prev => prev.filter(share => share._id !== permissionId));
-      fetchPermissions()
+      // Optimistic update: Find the entry and update its status to 'paused'
+      setOutgoingLocations(prev =>
+        prev.map(share =>
+          share._id === permissionId ? { ...share, status: 'paused' } : share
+        )
+      );
+      fetchPermissions(); // Re-fetch to confirm status and update all lists
       return true;
     } catch (error) {
       console.error("Failed to stop sharing:", error);
@@ -184,24 +202,27 @@ export function useSharePermissions() {
       setErrorPermissions(errorMessage || "Failed to stop sharing.");
       return false;
     }
-  }, []);
-  
+  }, [fetchPermissions]);
+
   /**
-   * Resumes sharing location with a specific viewer.
+   * Resumes sharing location with a specific viewer (sets status to 'active').
    * @param permissionId - The ID of the SharePermission document.
    */
   const resumeSharing = useCallback(async (permissionId: string): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/sharepermission/${permissionId}/resume`, { // Example API endpoint
-        method: 'PUT', // Or DELETE
+      const response = await fetch(`/api/sharepermission/${permissionId}/resume`, {
+        method: 'PUT',
       });
       const res = await response.json();
       if (!response.ok) throw new Error(res.message || 'Failed to resume sharing');
-      
-      
-      // Optimistic update: remove from outgoing
-      // setOutgoingLocations(prev => prev.filter(share => share._id !== permissionId));
-      fetchPermissions()
+
+      // Optimistic update: Find the entry and update its status to 'active'
+      setOutgoingLocations(prev =>
+        prev.map(share =>
+          share._id === permissionId ? { ...share, status: 'active' } : share
+        )
+      );
+      fetchPermissions(); // Re-fetch to confirm status and update all lists
       return true;
     } catch (error) {
       console.error("Failed to resume sharing:", error);
@@ -209,22 +230,23 @@ export function useSharePermissions() {
       setErrorPermissions(errorMessage || "Failed to resume sharing.");
       return false;
     }
-  }, []);
+  }, [fetchPermissions]);
+
   /**
    * Deletes sharing location with a specific viewer.
    * @param permissionId - The ID of the SharePermission document.
    */
   const deleteRequest = useCallback(async (permissionId: string): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/sharepermission?id=${permissionId}`, { // Example API endpoint
-        method: 'DELETE', // Or DELETE
+      const response = await fetch(`/api/sharepermission?id=${permissionId}`, {
+        method: 'DELETE',
       });
       const res = await response.json();
       if (!response.ok) throw new Error(res.message || 'Failed to delete sharing');
 
-      // Optimistic update: remove from outgoing
+      // Optimistic update: remove from sent requests
       setSentRequests(prev => prev.filter(share => share._id !== permissionId));
-      fetchPermissions()
+      fetchPermissions();
       return true;
     } catch (error) {
       console.error("Failed to delete sharing:", error);
@@ -232,7 +254,7 @@ export function useSharePermissions() {
       setErrorPermissions(errorMessage || "Failed to delete sharing.");
       return false;
     }
-  }, []);
+  }, [fetchPermissions]);
 
 
   return {
@@ -243,11 +265,12 @@ export function useSharePermissions() {
     isLoadingPermissions,
     errorPermissions,
     fetchPermissions,
-    requestLocation, // Exposed
+    requestLocation,
     acceptRequest,
     declineRequest,
     stopSharing,
     resumeSharing,
-    deleteRequest
+    deleteRequest,
+    isNativeSharingLocationActive, // EXPOSED: The new state
   };
 }

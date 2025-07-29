@@ -29,8 +29,9 @@ import { useNativeBridge } from '@/context/NativeBridgeContext'; // Assuming thi
 // --- Types & Enums ---
 import { LatLngLiteral } from '@/types/map';
 import { DefaultOverlays, ExclusiveOverlays, OverlayType } from '@/types/enums';
-import { CallNativeFunctionArgs, NativeArgs } from '@/types/bridge';
+import { NativeArgs } from '@/types/bridge';
 import { useSession } from 'next-auth/react';
+import { useSharePermissions } from '@/hooks/useSharePermissions';
 
 export default function Home() {
   // --- Consume Contexts ---
@@ -39,18 +40,17 @@ export default function Home() {
   const { data: session, status } = useSession();
   // NEW: Consume NativeBridgeContext to access native communication functions
   const {
-    center, // Current map center from native (can be ignored if MapDisplay handles its own center)
+    backgroundLocationStatus, // Current map center from native (can be ignored if MapDisplay handles its own center)
     logMessage: logMessageToNative,
     callBridgeFunction,
   } = useNativeBridge();
+  
+  const { isNativeSharingLocationActive, /* ...other share permissions */ } = useSharePermissions();
 
   // State to pass to BeaconHubOverlay for highlighting
   const [highlightedBeaconUserId, setHighlightedBeaconUserId] = useState<string | undefined>(undefined);
   const [initialBeaconHubTab, setInitialBeaconHubTab] = useState<'incoming' | 'outgoing' | 'pending' | undefined>(undefined);
 
-  // --- Example State for Location Sharing Control ---
-  const [isLocationSharingActive, setIsLocationSharingActive] = useState(false);
-  const [locationPingInterval, setLocationPingInterval] = useState<number>(1); // Default 30 mins
 
   // Callback to open BeaconHubOverlay and set highlight/tab
   const openBeaconHub = useCallback((userId?: string, tab: 'incoming' | 'outgoing' | 'pending' = 'incoming') => {
@@ -78,36 +78,43 @@ export default function Home() {
   //   // You might then proceed to hide login UI, show main map, etc.
   // }, [callBridgeFunction, logMessageToNative]);
 
-  // Handler for toggling background location sharing
-  const handleToggleLocationSharing = useCallback(() => {
-    if (isLocationSharingActive) {
-      // Pause sharing
-      callBridgeFunction('controlLocationSharing', { status: 'paused', interval: locationPingInterval } as NativeArgs)
-      setIsLocationSharingActive(false);
-      logMessageToNative("Web app requested native to pause location sharing.");
-    } else {
-      // Resume sharing
-      callBridgeFunction('controlLocationSharing', { status: 'resumed', interval: locationPingInterval } as NativeArgs)
-      setIsLocationSharingActive(true);
-      logMessageToNative(`Web app requested native to resume location sharing at ${locationPingInterval} min intervals.`);
-    }
-  }, [isLocationSharingActive, callBridgeFunction, locationPingInterval, logMessageToNative]);
+// --- Centralized useEffect to control BackgroundFetch based on sharing status ---
+  useEffect(() => {
+    const manageBackgroundLocationWorker = async () => {
+      // Get the current system status of BackgroundFetch
+      console.log(`[page.tsx] Native sharing active (derived): ${isNativeSharingLocationActive}. Current BackgroundFetch system status: ${backgroundLocationStatus}`);
 
-  // Handler for changing the ping interval
-  const handleChangeInterval = useCallback((newInterval: number) => {
-    setLocationPingInterval(newInterval);
-    if (isLocationSharingActive) {
-      // If already active, update with new interval immediately
-      callBridgeFunction('controlLocationSharing', { status: 'resumed', interval: newInterval } as NativeArgs)
-      logMessageToNative(`Web app requested native to update location sharing interval to ${newInterval} mins.`);
-    }
-  }, [isLocationSharingActive, callBridgeFunction, logMessageToNative]);
+      if (isNativeSharingLocationActive) {
+        // If sharing is active, ensure BackgroundFetch is running
+        if (backgroundLocationStatus) {
+          console.log('[page.tsx] Active outgoing shares detected. Attempting to START background location.');
+          // You can pass the desired interval here (e.g., 15 minutes)
+          callBridgeFunction('controlLocationSharing', {status: 'resumed', interval: 15} as NativeArgs)
+        } else {
+          console.log('[page.tsx] BackgroundFetch already available (running).');
+        }
+      } else {
+        // If no sharing is active, ensure BackgroundFetch is stopped
+        if (backgroundLocationStatus) {
+          console.log('[page.tsx] No active outgoing shares. Attempting to STOP background location.');
+          callBridgeFunction('controlLocationSharing', {status: 'paused', interval: 15} as NativeArgs)
+        } else {
+          console.log('[page.tsx] BackgroundFetch already stopped or not available.');
+        }
+      }
+    };
+    // Execute the management function
+    manageBackgroundLocationWorker();
 
-  // Handler for requesting current location (e.g., for a "Find Me" button)
-  const handleGetMyCurrentLocation = useCallback(() => {
-    callBridgeFunction('getLocation', {} as NativeArgs)
-    logMessageToNative("Web app requested native for current foreground location.");
-  }, [callBridgeFunction, logMessageToNative]);
+    // No specific cleanup needed here because `stopBackgroundFetch` is explicitly called
+    // when `isNativeSharingLocationActive` becomes false.
+  }, [isNativeSharingLocationActive, backgroundLocationStatus, callBridgeFunction]);
+  // --- End Centralized useEffect ---
+
+  // Effect to check initial background fetch status when the page/component mounts
+  useEffect(() => {
+    callBridgeFunction('checkBackgroundLocationStatus', {} as NativeArgs)
+  }, [callBridgeFunction]); // Run once on moun
 
 
   useEffect(() => {
@@ -292,44 +299,6 @@ export default function Home() {
           onClose={() => setActiveOverlay(ExclusiveOverlays.ADD_PERMISSION, OverlayType.EXCLUSIVE, false)}
         />
       )}
-
-      {/* NEW: Placeholder UI for testing Native Bridge Functions */}
-      <div className="absolute top-45 left-4 bg-white p-2 rounded shadow-md z-50">
-        <h3 className="font-bold mb-2">Native Controls (Web)</h3>
-        <button
-          onClick={() => callBridgeFunction('pingLocation', {} as CallNativeFunctionArgs)}
-          className="bg-blue-500 text-white px-3 py-1 rounded mb-2 mr-2"
-        >
-          Send Mock Location
-        </button>
-        <button
-          onClick={handleGetMyCurrentLocation}
-          className="bg-purple-500 text-white px-3 py-1 rounded mb-2"
-        >
-          Get My Current Location
-        </button>
-        <div className="flex items-center mb-2">
-          <button
-            onClick={handleToggleLocationSharing}
-            className={`px-3 py-1 rounded ${isLocationSharingActive ? 'bg-red-500' : 'bg-green-500'} text-white mr-2`}
-          >
-            {isLocationSharingActive ? 'Pause Sharing' : 'Start Sharing'}
-          </button>
-          <input
-            type="number"
-            value={locationPingInterval}
-            onChange={(e) => handleChangeInterval(parseInt(e.target.value) || 10)}
-            min="10"
-            max="60"
-            step="10"
-            className="w-20 border rounded px-2 py-1 text-center"
-          />
-          <span className="ml-2 text-sm">min interval</span>
-        </div>
-        <p className="text-xs">Sharing Status: {isLocationSharingActive ? 'Active' : 'Paused'}</p>
-        <p className="text-xs">Current Center: {center.lat.toFixed(4)}, {center.lng.toFixed(4)}</p>
-      </div>
-
 
       <div className='flex-none h-16'>
         <BottomNavigation />
