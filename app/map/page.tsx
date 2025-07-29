@@ -133,7 +133,7 @@ export default function Home() {
       callBridgeFunction('saveAuthToken', { authToken: '', refreshToken: '' } as NativeArgs)
     }
   }, [session, status, logMessageToNative, callBridgeFunction]);
-
+  
   return (
     <MapProvider
       isAddFenceOverlayActive={isAddFenceMode}
@@ -152,7 +152,7 @@ export default function Home() {
               />
             )}
              
-             {incomingLocations.map((incomingShare) => (
+             {incomingLocations.filter((incomingShare) => incomingShare.currentLocation !== null).map((incomingShare) => (
               <CustomUserMarker
                 key={incomingShare._id} // Assuming a unique ID for the sharer
                 position={incomingShare.currentLocation as LatLngLiteral} // The location object from incomingLocations
@@ -201,7 +201,6 @@ export default function Home() {
 
               return incomingFence.fences.map(fence => {
                 const centroid = calculatePolygonCentroid(fence.paths);
-                console.log(centroid);
                 return (
                   <React.Fragment key={fence._id}>
                     <Polygon
