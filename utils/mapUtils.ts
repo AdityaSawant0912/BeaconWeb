@@ -22,3 +22,5 @@ export const defaultMapContainerStyle = {
   width: '100%',
   height: '100%',
 };
+
+export const DEFAULT_USER_ZOOM = 16

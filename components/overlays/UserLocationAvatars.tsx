@@ -15,6 +15,7 @@ import { ExclusiveOverlays } from "@/types/enums"; // For overlay names
 import { LatLngLiteral } from '@/types/map'; // Assuming SharedUser type is available (or define it)
 import { OverlayType } from '@/types/enums';
 import { useMapManager } from '@/context/MapContext';
+import { DEFAULT_USER_ZOOM } from '@/utils/mapUtils';
 
 interface UserLocationAvatarsProps {
     // Callback to open BeaconHubOverlay with potential highlight
@@ -28,7 +29,7 @@ const UserLocationAvatars: React.FC<UserLocationAvatarsProps> = ({ onOpenBeaconH
 
     const [activeUserPanelId, setActiveUserPanelId] = useState<string | null>(null); // To control action buttons for a specific user
     const {center: _currentUsersLocation} = useNativeBridge()
-    const {setCenter} = useMapManager()
+    const {panToLocation } = useMapManager()
     
     // Re-fetch permissions if session changes or other triggers (optional, already done by useSharePermissions useEffect)
     // useEffect(() => {
@@ -49,9 +50,9 @@ const UserLocationAvatars: React.FC<UserLocationAvatarsProps> = ({ onOpenBeaconH
     }, []);
 
     const handleCenterMapClicked = useCallback((location: LatLngLiteral) => {
-        setCenter(location);
+        panToLocation(location, DEFAULT_USER_ZOOM);
         setActiveUserPanelId(null); // Hide action buttons after action
-    }, [setCenter]);
+    }, [panToLocation]);
 
     const handleOpenBeaconHubClicked = useCallback((userId: string) => {
         onOpenBeaconHub(userId, 'incoming'); // Pass userId and set initial tab to 'incoming'

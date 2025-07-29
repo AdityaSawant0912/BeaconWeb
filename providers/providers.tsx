@@ -2,7 +2,6 @@
 import { SessionProvider } from "next-auth/react";
 import { OverlayProvider } from "./OverlayProvider";
 import { NativeBridgeProvider } from "./NativeBridgeProvider";
-import GoogleMapProvider from "@/providers/map-provider";
 import { SharePermissionsProvider } from "./SharePermissionProvider";
 import { GeoFenceProvider } from "./GeoFenceProvider";
 import { MapProvider } from '@/providers/MapProvider';
@@ -16,11 +15,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <NativeBridgeProvider>
         <SharePermissionsProvider>
           <GeoFenceProvider>
-            <GoogleMapProvider>
               <OverlayProvider>
                 {children}
               </OverlayProvider>
-            </GoogleMapProvider>
           </GeoFenceProvider>
         </SharePermissionsProvider>
       </NativeBridgeProvider>
