@@ -20,8 +20,7 @@ import { calculatePolygonCentroid } from '@/utils/mapUtils';
 
 // --- Contexts & Hooks ---
 import { useOverlayManager } from '@/context/OverlayContext';
-import { MapProvider } from '@/providers/MapProvider';
-import { useGeoFenceApi } from '@/hooks/useGeoFenceApi';
+import { useGeoFence } from '@/context/GeoFenceContext';
 
 // NEW: Import useNativeBridge hook
 import { useNativeBridge } from '@/context/NativeBridgeContext'; // Assuming this hook exists in your context file
@@ -34,12 +33,14 @@ import { useSession } from 'next-auth/react';
 import { useSharePermissions } from '@/context/SharePermissionsContext';
 import StatusOverlay from '@/components/overlays/StatusOverlay';
 import CustomUserMarker from '@/components/CustomUserMarker';
+import { useMapManager } from '@/context/MapContext';
 
 
 export default function Home() {
   // --- Consume Contexts ---
   const { isOverlayActive, setActiveOverlay } = useOverlayManager();
-  const { fences, incomingFences, addFence, drawingPolygonPaths, addDrawingPoint, removeLastDrawingPoint, removeDrawingPoints, deleteFence } = useGeoFenceApi();
+  const { fences, incomingFences, addFence, drawingPolygonPaths, removeLastDrawingPoint, removeDrawingPoints, deleteFence } = useGeoFence();
+  const { setCenter } = useMapManager()
   const { data: session, status } = useSession();
   // NEW: Consume NativeBridgeContext to access native communication functions
   const {
@@ -134,34 +135,72 @@ export default function Home() {
     }
   }, [session, status, logMessageToNative, callBridgeFunction]);
   
+  useEffect(()=> {
+    setCenter(currentUserCenter)
+  }, [currentUserCenter, setCenter])
+
   return (
-    <MapProvider
-      isAddFenceOverlayActive={isAddFenceMode}
-      onMapClickForDrawing={addDrawingPoint}
-    >
-      <div className='flex flex-col h-screen w-screen relative'>
-        <div className='flex-grow'>
-          <MapDisplay>
-            {/* Current User */}
-             {currentUserCenter && session?.user && (
-              <CustomUserMarker
-                position={currentUserCenter}
-                userName={session.user.name || 'You'} // Use session user's name
-                userImage={session.user.image || undefined} // Use session user's image
-                isCurrentUser={true}
-              />
-            )}
-             
-             {incomingLocations.filter((incomingShare) => incomingShare.currentLocation !== null).map((incomingShare) => (
-              <CustomUserMarker
-                key={incomingShare._id} // Assuming a unique ID for the sharer
-                position={incomingShare.currentLocation as LatLngLiteral} // The location object from incomingLocations
-                userName={incomingShare.name} // The sharer's name
-                userImage={incomingShare.image || undefined} // Optional: sharer's image
-              />
-            ))}
-            {/* Render existing fences (polygons and their labels) */}
-            {fences.map(fence => {
+    <div className='flex flex-col h-screen w-screen relative'>
+      <div className='flex-grow'>
+        <MapDisplay>
+          {/* Current User */}
+          {currentUserCenter && session?.user && (
+            <CustomUserMarker
+              position={currentUserCenter}
+              userName={session.user.name || 'You'} // Use session user's name
+              userImage={session.user.image || undefined} // Use session user's image
+              isCurrentUser={true}
+            />
+          )}
+
+          {incomingLocations.filter((incomingShare) => incomingShare.currentLocation !== null).map((incomingShare) => (
+            <CustomUserMarker
+              key={incomingShare._id} // Assuming a unique ID for the sharer
+              position={incomingShare.currentLocation as LatLngLiteral} // The location object from incomingLocations
+              userName={incomingShare.name} // The sharer's name
+              userImage={incomingShare.image || undefined} // Optional: sharer's image
+            />
+          ))}
+          {/* Render existing fences (polygons and their labels) */}
+          {fences.map(fence => {
+            const centroid = calculatePolygonCentroid(fence.paths);
+            return (
+              <React.Fragment key={fence._id}>
+                <Polygon
+                  paths={fence.paths}
+                  options={{
+                    strokeColor: fence.color,
+                    strokeOpacity: 0.8,
+                    strokeWeight: 2,
+                    fillColor: fence.color,
+                    fillOpacity: 0.35,
+                    geodesic: true,
+                  }}
+                />
+                <Marker
+                  position={centroid}
+                  label={{
+                    text: fence.name,
+                    color: 'black',
+                    fontWeight: 'bold',
+                    fontSize: '14px',
+                  }}
+                  options={{
+                    icon: {
+                      path: google.maps.SymbolPath.CIRCLE,
+                      scale: 0,
+                    },
+                    clickable: false,
+                    draggable: false,
+                  }}
+                />
+              </React.Fragment>
+            );
+          })}
+
+          {incomingFences.map(incomingFence => {
+
+            return incomingFence.fences.map(fence => {
               const centroid = calculatePolygonCentroid(fence.paths);
               return (
                 <React.Fragment key={fence._id}>
@@ -179,7 +218,7 @@ export default function Home() {
                   <Marker
                     position={centroid}
                     label={{
-                      text: fence.name,
+                      text: incomingFence.sharerUser.name + " > " + fence.name,
                       color: 'black',
                       fontWeight: 'bold',
                       fontSize: '14px',
@@ -195,139 +234,100 @@ export default function Home() {
                   />
                 </React.Fragment>
               );
-            })}
+            })
+          })}
 
-            {incomingFences.map(incomingFence => {
-
-              return incomingFence.fences.map(fence => {
-                const centroid = calculatePolygonCentroid(fence.paths);
-                return (
-                  <React.Fragment key={fence._id}>
-                    <Polygon
-                      paths={fence.paths}
-                      options={{
-                        strokeColor: fence.color,
-                        strokeOpacity: 0.8,
-                        strokeWeight: 2,
-                        fillColor: fence.color,
-                        fillOpacity: 0.35,
-                        geodesic: true,
-                      }}
-                    />
-                    <Marker
-                      position={centroid}
-                      label={{
-                        text: incomingFence.sharerUser.name + " > " + fence.name,
-                        color: 'black',
-                        fontWeight: 'bold',
-                        fontSize: '14px',
-                      }}
-                      options={{
-                        icon: {
-                          path: google.maps.SymbolPath.CIRCLE,
-                          scale: 0,
-                        },
-                        clickable: false,
-                        draggable: false,
-                      }}
-                    />
-                  </React.Fragment>
-                );
-              })
-            })}
-
-            {/* Render the polygon currently being drawn and its point markers,
+          {/* Render the polygon currently being drawn and its point markers,
                             only when in 'addFence' mode and points exist */}
-            {isAddFenceMode && drawingPolygonPaths.length > 0 && (
-              <>
-                <Polygon
-                  paths={drawingPolygonPaths}
+          {isAddFenceMode && drawingPolygonPaths.length > 0 && (
+            <>
+              <Polygon
+                paths={drawingPolygonPaths}
+                options={{
+                  strokeColor: '#0000FF',
+                  strokeOpacity: 0.8,
+                  strokeWeight: 2,
+                  fillColor: '#0000FF',
+                  fillOpacity: 0.2,
+                  geodesic: true,
+                }}
+              />
+              {drawingPolygonPaths.map((point, index) => (
+                <Marker
+                  key={`drawing-point-${index}`}
+                  position={point}
                   options={{
-                    strokeColor: '#0000FF',
-                    strokeOpacity: 0.8,
-                    strokeWeight: 2,
-                    fillColor: '#0000FF',
-                    fillOpacity: 0.2,
-                    geodesic: true,
+                    icon: {
+                      path: google.maps.SymbolPath.CIRCLE,
+                      scale: 8,
+                      fillColor: '#0000FF',
+                      fillOpacity: 1,
+                      strokeColor: '#FFFFFF',
+                      strokeWeight: 1,
+                    },
+                    label: {
+                      text: `${index + 1}`,
+                      color: 'white',
+                      fontSize: '10px'
+                    }
                   }}
                 />
-                {drawingPolygonPaths.map((point, index) => (
-                  <Marker
-                    key={`drawing-point-${index}`}
-                    position={point}
-                    options={{
-                      icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 8,
-                        fillColor: '#0000FF',
-                        fillOpacity: 1,
-                        strokeColor: '#FFFFFF',
-                        strokeWeight: 1,
-                      },
-                      label: {
-                        text: `${index + 1}`,
-                        color: 'white',
-                        fontSize: '10px'
-                      }
-                    }}
-                  />
-                ))}
-              </>
-            )}
-          </MapDisplay>
+              ))}
+            </>
+          )}
+        </MapDisplay>
 
-        </div>
-
-        {/* --- Status UI - Conditionally Rendered based on OverlayContext --- */}
-        {isOverlayActive(DefaultOverlays.STATUS) && (
-          <StatusOverlay />
-        )}
-        {/* --- Overlay UI - Conditionally Rendered based on OverlayContext --- */}
-        {isOverlayActive(DefaultOverlays.SHARE) && (
-          <UserLocationAvatars onOpenBeaconHub={openBeaconHub} />
-        )}
-
-        {isOverlayActive(ExclusiveOverlays.BEACON_HUB) && (
-          <BeaconHubOverlay
-            onClose={() => setActiveOverlay(ExclusiveOverlays.BEACON_HUB, OverlayType.EXCLUSIVE, false)}
-            initialTab={initialBeaconHubTab}
-            highlightUserId={highlightedBeaconUserId}
-          />
-        )}
-
-        {isOverlayActive(ExclusiveOverlays.DETAILS) && (
-          <DetailsOverlay onClose={() => setActiveOverlay(ExclusiveOverlays.DETAILS, OverlayType.EXCLUSIVE, false)} />
-        )}
-        {isOverlayActive(ExclusiveOverlays.FENCES) && (
-          <FencesOverlay
-            fences={fences}
-            onClose={() => setActiveOverlay(ExclusiveOverlays.FENCES, OverlayType.EXCLUSIVE, false)}
-            onAddFenceClick={() => setActiveOverlay(ExclusiveOverlays.ADD_FENCE, OverlayType.EXCLUSIVE, true)}
-            deleteFence={deleteFence}
-          />
-        )}
-        {isOverlayActive(ExclusiveOverlays.ADD_FENCE) && (
-          <AddFenceOverlay
-            onClose={() => {
-              setActiveOverlay(ExclusiveOverlays.ADD_FENCE, OverlayType.EXCLUSIVE, false);
-              removeDrawingPoints();
-            }}
-            onSave={handleAddFenceAndOverlayUpdate}
-            drawingPaths={drawingPolygonPaths}
-            onRemoveLastPoint={removeLastDrawingPoint}
-          />
-        )}
-
-        {isOverlayActive(ExclusiveOverlays.ADD_PERMISSION) && (
-          <RequestLocationOverlay
-            onClose={() => setActiveOverlay(ExclusiveOverlays.ADD_PERMISSION, OverlayType.EXCLUSIVE, false)}
-          />
-        )}
-
-        <div className='flex-none h-16'>
-          <BottomNavigation />
-        </div>
       </div>
-    </MapProvider>
+
+      {/* --- Status UI - Conditionally Rendered based on OverlayContext --- */}
+      {isOverlayActive(DefaultOverlays.STATUS) && (
+        <StatusOverlay />
+      )}
+      {/* --- Overlay UI - Conditionally Rendered based on OverlayContext --- */}
+      {isOverlayActive(DefaultOverlays.SHARE) && (
+        <UserLocationAvatars onOpenBeaconHub={openBeaconHub} />
+      )}
+
+      {isOverlayActive(ExclusiveOverlays.BEACON_HUB) && (
+        <BeaconHubOverlay
+          onClose={() => setActiveOverlay(ExclusiveOverlays.BEACON_HUB, OverlayType.EXCLUSIVE, false)}
+          initialTab={initialBeaconHubTab}
+          highlightUserId={highlightedBeaconUserId}
+        />
+      )}
+
+      {isOverlayActive(ExclusiveOverlays.DETAILS) && (
+        <DetailsOverlay onClose={() => setActiveOverlay(ExclusiveOverlays.DETAILS, OverlayType.EXCLUSIVE, false)} />
+      )}
+      {isOverlayActive(ExclusiveOverlays.FENCES) && (
+        <FencesOverlay
+          fences={fences}
+          onClose={() => setActiveOverlay(ExclusiveOverlays.FENCES, OverlayType.EXCLUSIVE, false)}
+          onAddFenceClick={() => setActiveOverlay(ExclusiveOverlays.ADD_FENCE, OverlayType.EXCLUSIVE, true)}
+          deleteFence={deleteFence}
+        />
+      )}
+      {isOverlayActive(ExclusiveOverlays.ADD_FENCE) && (
+        <AddFenceOverlay
+          onClose={() => {
+            setActiveOverlay(ExclusiveOverlays.ADD_FENCE, OverlayType.EXCLUSIVE, false);
+            removeDrawingPoints();
+          }}
+          onSave={handleAddFenceAndOverlayUpdate}
+          drawingPaths={drawingPolygonPaths}
+          onRemoveLastPoint={removeLastDrawingPoint}
+        />
+      )}
+
+      {isOverlayActive(ExclusiveOverlays.ADD_PERMISSION) && (
+        <RequestLocationOverlay
+          onClose={() => setActiveOverlay(ExclusiveOverlays.ADD_PERMISSION, OverlayType.EXCLUSIVE, false)}
+        />
+      )}
+
+      <div className='flex-none h-16'>
+        <BottomNavigation />
+      </div>
+    </div>
   );
 }
