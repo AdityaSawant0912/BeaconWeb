@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useSharePermissions } from '@/hooks/useSharePermissions';
+import { useSharePermissions } from '@/context/SharePermissionsContext';
 import { useNativeBridge } from '@/context/NativeBridgeContext'; // For setLocation
 import { LatLngLiteral } from '@/types/map'; // For location type
 import Icon from '@/components/Icon'; // For action icons

@@ -1,49 +1,19 @@
-// hooks/useSharePermissions.ts
+import { OutgoingShareEntry, PendingRequestEntry, SentRequestEntry, SharedUser, SharePermissionsContext } from '@/context/SharePermissionsContext';
+import React, {  useState, useEffect, useCallback, ReactNode, useMemo } from 'react';
 
-import { useState, useEffect, useCallback } from 'react';
-import { LatLngLiteral } from '@/types/map'; // Ensure these types are correct
-
-// Assuming a structure for shared data:
-// These interfaces should be defined in a dedicated types file, e.g., '@/types/sharing.ts'
-interface SharedUser {
-  _id: string; // User ID from MongoDB (or just 'id')
-  name: string;
-  email: string;
-  image?: string;
-  currentLocation?: LatLngLiteral; // Last known location, if available
-  status?: string;
+// Create the Provider Component
+interface SharePermissionsProviderProps {
+  children: ReactNode;
 }
 
-// Represents an entry in 'Outgoing Locations'
-interface OutgoingShareEntry {
-  _id: string; // ID of the SharePermission document
-  viewer: SharedUser; // The user you are sharing with
-  status: string; // 'active', 'paused', etc.
-}
-
-// Represents an entry in 'Pending Requests'
-interface PendingRequestEntry {
-  _id: string; // ID of the SharePermission document
-  requester: SharedUser; // The user who requested your location
-  status: string; // 'pending_request'
-}
-// Represents an entry in 'Pending Requests'
-interface SentRequestEntry {
-  _id: string; // ID of the SharePermission document
-  sharer: SharedUser; // The user who requested your location
-  status: string; // 'pending_request'
-}
-
-
-export function useSharePermissions() {
+export const SharePermissionsProvider: React.FC<SharePermissionsProviderProps> = ({ children }) => {
+  // All the state and logic from your original useSharePermissions hook
   const [incomingLocations, setIncomingLocations] = useState<SharedUser[]>([]);
   const [outgoingLocations, setOutgoingLocations] = useState<OutgoingShareEntry[]>([]);
   const [pendingRequests, setPendingRequests] = useState<PendingRequestEntry[]>([]);
   const [sentRequests, setSentRequests] = useState<SentRequestEntry[]>([]);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
   const [errorPermissions, setErrorPermissions] = useState<string | null>(null);
-
-  // NEW STATE: To track if native background location sharing should be active
   const [isNativeSharingLocationActive, setIsNativeSharingLocationActive] = useState(false);
 
 
@@ -78,25 +48,17 @@ export function useSharePermissions() {
 
   // NEW useEffect: Listen to outgoingLocations to update native sharing status
   useEffect(() => {
-    // Check if there's at least one active outgoing location share
     const anyActiveShares = outgoingLocations.some(
       (entry) => entry.status === 'active'
     );
 
-    // Update the state
+    // This is the crucial check to avoid unnecessary state updates and re-renders
     if (anyActiveShares !== isNativeSharingLocationActive) {
-      console.log(`[useSharePermissions] Updating native sharing status: ${anyActiveShares ? 'Active' : 'Paused'}`);
+      console.log(`[SharePermissionsContext] Updating native sharing status: ${anyActiveShares ? 'Active' : 'Paused'}`);
       setIsNativeSharingLocationActive(anyActiveShares);
     }
-  }, [outgoingLocations, isNativeSharingLocationActive]); // Dependency on outgoingLocations and its own state
+  }, [outgoingLocations, isNativeSharingLocationActive]); // Depend on both to ensure logic re-runs if either changes, though `outgoingLocations` is the primary trigger.
 
-
-  /**
-   * Sends a request to another user to share their location with the current user.
-   * This is the logic from your old AddPermissonOverlay's handleSave.
-   * @param sharerEmail - The email of the user whose location is being requested.
-   * @returns true if the request was sent successfully, false otherwise.
-   */
   const requestLocation = useCallback(async (sharerEmail: string): Promise<boolean> => {
     try {
       const response = await fetch('/api/sharing', {
@@ -125,10 +87,6 @@ export function useSharePermissions() {
     }
   }, [fetchPermissions]);
 
-  /**
-   * Accepts a pending location request.
-   * @param permissionId - The ID of the SharePermission document.
-   */
   const acceptRequest = useCallback(async (permissionId: string): Promise<boolean> => {
     try {
       const response = await fetch(`/api/sharepermission/${permissionId}/accept`, {
@@ -137,11 +95,7 @@ export function useSharePermissions() {
       const res = await response.json();
       if (!response.ok) throw new Error(res.message || 'Failed to accept request');
 
-      // Optimistic update: move from pending to outgoing (as you become the sharer)
       setPendingRequests(prev => prev.filter(req => req._id !== permissionId));
-      // Assuming res.acceptedPermission contains the newly created outgoing permission details
-      // You might need to adjust this based on your API's actual response
-      // For now, rely on refetch for full accuracy
       fetchPermissions();
       return true;
     } catch (error) {
@@ -150,12 +104,8 @@ export function useSharePermissions() {
       setErrorPermissions(errorMessage || "Failed to accept request.");
       return false;
     }
-  }, [fetchPermissions]); // Added fetchPermissions as dependency
+  }, [fetchPermissions]);
 
-  /**
-   * Declines a pending location request.
-   * @param permissionId - The ID of the SharePermission document.
-   */
   const declineRequest = useCallback(async (permissionId: string): Promise<boolean> => {
     try {
       const response = await fetch(`/api/sharepermission/${permissionId}/decline`, {
@@ -164,7 +114,6 @@ export function useSharePermissions() {
       const res = await response.json();
       if (!response.ok) throw new Error(res.message || 'Failed to decline request');
 
-      // Optimistic update: remove from pending
       setPendingRequests(prev => prev.filter(req => req._id !== permissionId));
       fetchPermissions();
       return true;
@@ -176,10 +125,6 @@ export function useSharePermissions() {
     }
   }, [fetchPermissions]);
 
-  /**
-   * Stops sharing location with a specific viewer (sets status to 'paused' or removes).
-   * @param permissionId - The ID of the SharePermission document.
-   */
   const stopSharing = useCallback(async (permissionId: string): Promise<boolean> => {
     try {
       const response = await fetch(`/api/sharepermission/${permissionId}/stop`, {
@@ -188,13 +133,12 @@ export function useSharePermissions() {
       const res = await response.json();
       if (!response.ok) throw new Error(res.message || 'Failed to stop sharing');
 
-      // Optimistic update: Find the entry and update its status to 'paused'
       setOutgoingLocations(prev =>
         prev.map(share =>
           share._id === permissionId ? { ...share, status: 'paused' } : share
         )
       );
-      fetchPermissions(); // Re-fetch to confirm status and update all lists
+      fetchPermissions();
       return true;
     } catch (error) {
       console.error("Failed to stop sharing:", error);
@@ -204,10 +148,6 @@ export function useSharePermissions() {
     }
   }, [fetchPermissions]);
 
-  /**
-   * Resumes sharing location with a specific viewer (sets status to 'active').
-   * @param permissionId - The ID of the SharePermission document.
-   */
   const resumeSharing = useCallback(async (permissionId: string): Promise<boolean> => {
     try {
       const response = await fetch(`/api/sharepermission/${permissionId}/resume`, {
@@ -216,13 +156,12 @@ export function useSharePermissions() {
       const res = await response.json();
       if (!response.ok) throw new Error(res.message || 'Failed to resume sharing');
 
-      // Optimistic update: Find the entry and update its status to 'active'
       setOutgoingLocations(prev =>
         prev.map(share =>
           share._id === permissionId ? { ...share, status: 'active' } : share
         )
       );
-      fetchPermissions(); // Re-fetch to confirm status and update all lists
+      fetchPermissions();
       return true;
     } catch (error) {
       console.error("Failed to resume sharing:", error);
@@ -232,10 +171,6 @@ export function useSharePermissions() {
     }
   }, [fetchPermissions]);
 
-  /**
-   * Deletes sharing location with a specific viewer.
-   * @param permissionId - The ID of the SharePermission document.
-   */
   const deleteRequest = useCallback(async (permissionId: string): Promise<boolean> => {
     try {
       const response = await fetch(`/api/sharepermission?id=${permissionId}`, {
@@ -244,7 +179,6 @@ export function useSharePermissions() {
       const res = await response.json();
       if (!response.ok) throw new Error(res.message || 'Failed to delete sharing');
 
-      // Optimistic update: remove from sent requests
       setSentRequests(prev => prev.filter(share => share._id !== permissionId));
       fetchPermissions();
       return true;
@@ -256,8 +190,8 @@ export function useSharePermissions() {
     }
   }, [fetchPermissions]);
 
-
-  return {
+  // Memoize the context value to prevent unnecessary re-renders of consumers
+  const contextValue = useMemo(() => ({
     incomingLocations,
     outgoingLocations,
     pendingRequests,
@@ -271,6 +205,27 @@ export function useSharePermissions() {
     stopSharing,
     resumeSharing,
     deleteRequest,
-    isNativeSharingLocationActive, // EXPOSED: The new state
-  };
-}
+    isNativeSharingLocationActive,
+  }), [
+    incomingLocations,
+    outgoingLocations,
+    pendingRequests,
+    sentRequests,
+    isLoadingPermissions,
+    errorPermissions,
+    fetchPermissions,
+    requestLocation,
+    acceptRequest,
+    declineRequest,
+    stopSharing,
+    resumeSharing,
+    deleteRequest,
+    isNativeSharingLocationActive,
+  ]);
+
+  return (
+    <SharePermissionsContext.Provider value={contextValue}>
+      {children}
+    </SharePermissionsContext.Provider>
+  );
+};

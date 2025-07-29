@@ -15,8 +15,8 @@ interface MapProviderProps {
 }
 
 export const MapProvider: React.FC<MapProviderProps> = ({ children, isAddFenceOverlayActive, onMapClickForDrawing }) => {
-  const { center, setLocation, callBridgeFunction } = useNativeBridge();
-
+  const { center: currentUserCenter, setLocation, callBridgeFunction } = useNativeBridge(); // Current users center
+  const [center, setCenter] = useState<LatLngLiteral>(currentUserCenter) // Maps center
   const [defaultMarkerIconOptions, setDefaultMarkerIconOptions] = useState<google.maps.MarkerOptions['icon'] | undefined>(undefined);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -33,11 +33,12 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children, isAddFenceOv
     } else {
       navigator.geolocation.getCurrentPosition((pos) => {
         setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       }, (e) => { console.log(e); }, {
         enableHighAccuracy: true,
       });
     }
-  }, [callBridgeFunction, setLocation]);
+  }, [callBridgeFunction, setLocation, setCenter]);
 
   const mapOnClick = useCallback((e: google.maps.MapMouseEvent) => {
     const lat = e.latLng?.lat();
@@ -57,6 +58,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children, isAddFenceOv
 
   const contextValue = useMemo(() => ({
     center,
+    setCenter,
     defaultMarkerIconOptions,
     mapOnLoad,
     mapOnClick,

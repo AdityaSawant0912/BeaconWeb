@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 // components/UserLocationAvatars.tsx (formerly ShareOverlay.js)
 
 "use client";
@@ -8,11 +9,12 @@ import Icon from "@/components/Icon"; // Assuming your Icon component
 import { useSession } from "next-auth/react"; // For current user
 import { useNativeBridge } from '@/context/NativeBridgeContext'; // For centering map
 import { useOverlayManager } from '@/context/OverlayContext'; // For opening overlays
-import { useSharePermissions } from '@/hooks/useSharePermissions'; // For incomingLocations data
+import { useSharePermissions } from '@/context/SharePermissionsContext'; // For incomingLocations data
 
 import { ExclusiveOverlays } from "@/types/enums"; // For overlay names
 import { LatLngLiteral } from '@/types/map'; // Assuming SharedUser type is available (or define it)
 import { OverlayType } from '@/types/enums';
+import { useMapManager } from '@/context/MapContext';
 
 interface UserLocationAvatarsProps {
     // Callback to open BeaconHubOverlay with potential highlight
@@ -21,12 +23,13 @@ interface UserLocationAvatarsProps {
 
 const UserLocationAvatars: React.FC<UserLocationAvatarsProps> = ({ onOpenBeaconHub }) => {
     const { data: session } = useSession();
-    const { setLocation } = useNativeBridge(); // To center map
     const { setActiveOverlay } = useOverlayManager(); // To activate overlays
     const { incomingLocations} = useSharePermissions(); // Get incoming locations
 
     const [activeUserPanelId, setActiveUserPanelId] = useState<string | null>(null); // To control action buttons for a specific user
-
+    const {center: _currentUsersLocation} = useNativeBridge()
+    const {setCenter} = useMapManager()
+    
     // Re-fetch permissions if session changes or other triggers (optional, already done by useSharePermissions useEffect)
     // useEffect(() => {
     //   if (session?.user?.id) {
@@ -35,20 +38,20 @@ const UserLocationAvatars: React.FC<UserLocationAvatarsProps> = ({ onOpenBeaconH
     // }, [session?.user?.id, fetchPermissions]);
 
 
-    const handleAvatarClick = useCallback((userId: string, userLocation?: LatLngLiteral) => {
+    const handleAvatarClick = useCallback((userId: string) => {
         // Toggle the action buttons for this user
         setActiveUserPanelId(prevId => (prevId === userId ? null : userId));
 
         // Auto-center map if a location is available and it's the current active user
-        if (userLocation && activeUserPanelId !== userId) { // If panel opens or changes, center map
-            setLocation(userLocation);
-        }
-    }, [activeUserPanelId, setLocation]);
+        // if (userLocation && activeUserPanelId !== userId) { // If panel opens or changes, center map
+        //     setCenter(userLocation);
+        // }
+    }, []);
 
     const handleCenterMapClicked = useCallback((location: LatLngLiteral) => {
-        setLocation(location);
+        setCenter(location);
         setActiveUserPanelId(null); // Hide action buttons after action
-    }, [setLocation]);
+    }, [setCenter]);
 
     const handleOpenBeaconHubClicked = useCallback((userId: string) => {
         onOpenBeaconHub(userId, 'incoming'); // Pass userId and set initial tab to 'incoming'
@@ -60,16 +63,16 @@ const UserLocationAvatars: React.FC<UserLocationAvatarsProps> = ({ onOpenBeaconH
         setActiveOverlay(ExclusiveOverlays.ADD_PERMISSION, OverlayType.EXCLUSIVE, true);
     }, [setActiveOverlay]);
 
-    const _currentUsersLocation = useNativeBridge().center
 
     if (!session) {
         return null; // Don't render if no session
     }
 
     // Combine current user with incoming for display in the stack
+    const currentUserEmail = session.user.email || 'current_user'
     const usersToDisplay = [
         ...(session.user ? [{
-            email: session.user.email || 'current_user',
+            email: currentUserEmail,
             name: session.user.name || 'You',
             image: session.user.image || '',
             currentLocation: _currentUsersLocation// Current user's location from native bridge
@@ -86,7 +89,7 @@ const UserLocationAvatars: React.FC<UserLocationAvatarsProps> = ({ onOpenBeaconH
                     <button
                         className={`w-10 h-10 rounded-full border-2 ${activeUserPanelId === user.email ? 'border-blue-500' : (user.email === 'current_user' ? 'border-green-500' : 'border-red-500')} overflow-hidden shadow-md flex items-center justify-center bg-gray-200`}
                         title={user.name}
-                        onClick={() => handleAvatarClick(user.email, user.currentLocation)}
+                        onClick={() => handleAvatarClick(user.email)}
                     >
                         {user.image ? (
                             <img src={user.image} alt={user.name} width={40} height={40} className="rounded-full object-cover" />
@@ -107,7 +110,7 @@ const UserLocationAvatars: React.FC<UserLocationAvatarsProps> = ({ onOpenBeaconH
                                     <Icon name="map" size="16px" /> {/* Assuming 'map' icon exists */}
                                 </button>
                             )}
-                            {user.email !== 'current_user' && ( // Don't show Beacon Hub icon for self-avatar if it's redundant
+                            {user.email !== currentUserEmail && ( // Don't show Beacon Hub icon for self-avatar if it's redundant
                                 <button
                                     onClick={() => handleOpenBeaconHubClicked(user.email)}
                                     className="p-2 bg-purple-500 text-white rounded-full text-xs shadow-md hover:bg-purple-600 transition-colors"

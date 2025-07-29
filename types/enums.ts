@@ -1,5 +1,6 @@
 export enum DefaultOverlays {
   SHARE = 'share',
+  STATUS = 'status'
 }
 
 export enum ExclusiveOverlays {

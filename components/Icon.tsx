@@ -34,7 +34,9 @@ const LazyIconComponents = {
   'close': lazy(() => import('react-icons/io5').then(mod => ({ default: mod.IoCloseSharp  }))),
   'pause': lazy(() => import('react-icons/io5').then(mod => ({ default: mod.IoPause   }))),
   'play': lazy(() => import('react-icons/io5').then(mod => ({ default: mod.IoPlay   }))),
-
+  
+  'location-share': lazy(() => import('react-icons/tb').then(mod => ({ default: mod.TbLocationCheck    }))),
+  'location-share-off': lazy(() => import('react-icons/tb').then(mod => ({ default: mod.TbLocationX     }))),
   // Add more icons from different libraries as you need them
   // e.g., 'calendar': lazy(() => import('react-icons/fi').then(mod => ({ default: mod.FiCalendar }))), // Feather Icons
 };

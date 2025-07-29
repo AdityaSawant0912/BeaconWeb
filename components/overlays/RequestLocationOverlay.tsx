@@ -4,7 +4,7 @@
 
 import React, { useState, useCallback } from 'react';
 import Icon from "@/components/Icon"; // Assuming this is your Icon component
-import { useSharePermissions } from '@/hooks/useSharePermissions'; // NEW: Import the hook
+import { useSharePermissions } from '@/context/SharePermissionsContext'; // NEW: Import the hook
 
 interface RequestLocationOverlayProps { // Renamed interface
   onClose: () => void;

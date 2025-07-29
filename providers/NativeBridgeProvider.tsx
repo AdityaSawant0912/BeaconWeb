@@ -44,7 +44,7 @@ export const NativeBridgeProvider: React.FC<NativeBridgeProviderProps> = ({ chil
     setLocation, // This setLocation is registered with the bridge
     reportNativeError,
     reportBackgroundLocationStatus
-  }), [logMessage, setLocation, reportNativeError]);
+  }), [logMessage, setLocation, reportNativeError, reportBackgroundLocationStatus]);
 
   // --- Initialize your existing Native Web Bridge Hook ---
   // This hook sets up the listeners and provides the function to call native
@@ -59,7 +59,7 @@ export const NativeBridgeProvider: React.FC<NativeBridgeProviderProps> = ({ chil
     logMessage: (message: string) => logMessage({ message } as NativeMessageArgs), // Exposed simplified logMessage
     reportNativeError: (regarding: string, error: string) => reportNativeError({ regarding, error } as NativeErrorArgs), // Exposed simplified reportNativeError
     setCenterState: setCenterState
-  }), [center, setLocation, callBridgeFunction, logMessage, reportNativeError]);
+  }), [center, backgroundLocationStatus, callBridgeFunction, setLocation, logMessage, reportNativeError]);
 
   return (
     <NativeBridgeContext.Provider value={contextValue}>
