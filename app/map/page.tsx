@@ -31,7 +31,10 @@ import { LatLngLiteral } from '@/types/map';
 import { DefaultOverlays, ExclusiveOverlays, OverlayType } from '@/types/enums';
 import { NativeArgs } from '@/types/bridge';
 import { useSession } from 'next-auth/react';
-import { useSharePermissions } from '@/hooks/useSharePermissions';
+import { useSharePermissions } from '@/context/SharePermissionsContext';
+import StatusOverlay from '@/components/overlays/StatusOverlay';
+import CustomUserMarker from '@/components/CustomUserMarker';
+
 
 export default function Home() {
   // --- Consume Contexts ---
@@ -40,12 +43,13 @@ export default function Home() {
   const { data: session, status } = useSession();
   // NEW: Consume NativeBridgeContext to access native communication functions
   const {
+    center: currentUserCenter,
     backgroundLocationStatus, // Current map center from native (can be ignored if MapDisplay handles its own center)
     logMessage: logMessageToNative,
     callBridgeFunction,
   } = useNativeBridge();
-  
-  const { isNativeSharingLocationActive, /* ...other share permissions */ } = useSharePermissions();
+
+  const { isNativeSharingLocationActive, incomingLocations } = useSharePermissions();
 
   // State to pass to BeaconHubOverlay for highlighting
   const [highlightedBeaconUserId, setHighlightedBeaconUserId] = useState<string | undefined>(undefined);
@@ -78,7 +82,7 @@ export default function Home() {
   //   // You might then proceed to hide login UI, show main map, etc.
   // }, [callBridgeFunction, logMessageToNative]);
 
-// --- Centralized useEffect to control BackgroundFetch based on sharing status ---
+  // --- Centralized useEffect to control BackgroundFetch based on sharing status ---
   useEffect(() => {
     const manageBackgroundLocationWorker = async () => {
       // Get the current system status of BackgroundFetch
@@ -89,7 +93,7 @@ export default function Home() {
         if (backgroundLocationStatus) {
           console.log('[page.tsx] Active outgoing shares detected. Attempting to START background location.');
           // You can pass the desired interval here (e.g., 15 minutes)
-          callBridgeFunction('controlLocationSharing', {status: 'resumed', interval: 15} as NativeArgs)
+          callBridgeFunction('controlLocationSharing', { status: 'resumed', interval: 15 } as NativeArgs)
         } else {
           console.log('[page.tsx] BackgroundFetch already available (running).');
         }
@@ -97,7 +101,7 @@ export default function Home() {
         // If no sharing is active, ensure BackgroundFetch is stopped
         if (backgroundLocationStatus) {
           console.log('[page.tsx] No active outgoing shares. Attempting to STOP background location.');
-          callBridgeFunction('controlLocationSharing', {status: 'paused', interval: 15} as NativeArgs)
+          callBridgeFunction('controlLocationSharing', { status: 'paused', interval: 15 } as NativeArgs)
         } else {
           console.log('[page.tsx] BackgroundFetch already stopped or not available.');
         }
@@ -131,13 +135,31 @@ export default function Home() {
   }, [session, status, logMessageToNative, callBridgeFunction]);
 
   return (
-    <div className='flex flex-col h-screen w-screen relative'>
-      <div className='flex-grow'>
-        <MapProvider
-          isAddFenceOverlayActive={isAddFenceMode}
-          onMapClickForDrawing={addDrawingPoint}
-        >
+    <MapProvider
+      isAddFenceOverlayActive={isAddFenceMode}
+      onMapClickForDrawing={addDrawingPoint}
+    >
+      <div className='flex flex-col h-screen w-screen relative'>
+        <div className='flex-grow'>
           <MapDisplay>
+            {/* Current User */}
+             {currentUserCenter && session?.user && (
+              <CustomUserMarker
+                position={currentUserCenter}
+                userName={session.user.name || 'You'} // Use session user's name
+                userImage={session.user.image || undefined} // Use session user's image
+                isCurrentUser={true}
+              />
+            )}
+             
+             {incomingLocations.map((incomingShare) => (
+              <CustomUserMarker
+                key={incomingShare._id} // Assuming a unique ID for the sharer
+                position={incomingShare.currentLocation as LatLngLiteral} // The location object from incomingLocations
+                userName={incomingShare.name} // The sharer's name
+                userImage={incomingShare.image || undefined} // Optional: sharer's image
+              />
+            ))}
             {/* Render existing fences (polygons and their labels) */}
             {fences.map(fence => {
               const centroid = calculatePolygonCentroid(fence.paths);
@@ -176,8 +198,7 @@ export default function Home() {
             })}
 
             {incomingFences.map(incomingFence => {
-              if (incomingFence.fences.length === 0) return <></>
-              
+
               return incomingFence.fences.map(fence => {
                 const centroid = calculatePolygonCentroid(fence.paths);
                 console.log(centroid);
@@ -197,7 +218,7 @@ export default function Home() {
                     <Marker
                       position={centroid}
                       label={{
-                        text: incomingFence.sharerUser.name + " > " +fence.name,
+                        text: incomingFence.sharerUser.name + " > " + fence.name,
                         color: 'black',
                         fontWeight: 'bold',
                         fontSize: '14px',
@@ -255,54 +276,59 @@ export default function Home() {
               </>
             )}
           </MapDisplay>
-        </MapProvider>
+
+        </div>
+
+        {/* --- Status UI - Conditionally Rendered based on OverlayContext --- */}
+        {isOverlayActive(DefaultOverlays.STATUS) && (
+          <StatusOverlay />
+        )}
+        {/* --- Overlay UI - Conditionally Rendered based on OverlayContext --- */}
+        {isOverlayActive(DefaultOverlays.SHARE) && (
+          <UserLocationAvatars onOpenBeaconHub={openBeaconHub} />
+        )}
+
+        {isOverlayActive(ExclusiveOverlays.BEACON_HUB) && (
+          <BeaconHubOverlay
+            onClose={() => setActiveOverlay(ExclusiveOverlays.BEACON_HUB, OverlayType.EXCLUSIVE, false)}
+            initialTab={initialBeaconHubTab}
+            highlightUserId={highlightedBeaconUserId}
+          />
+        )}
+
+        {isOverlayActive(ExclusiveOverlays.DETAILS) && (
+          <DetailsOverlay onClose={() => setActiveOverlay(ExclusiveOverlays.DETAILS, OverlayType.EXCLUSIVE, false)} />
+        )}
+        {isOverlayActive(ExclusiveOverlays.FENCES) && (
+          <FencesOverlay
+            fences={fences}
+            onClose={() => setActiveOverlay(ExclusiveOverlays.FENCES, OverlayType.EXCLUSIVE, false)}
+            onAddFenceClick={() => setActiveOverlay(ExclusiveOverlays.ADD_FENCE, OverlayType.EXCLUSIVE, true)}
+            deleteFence={deleteFence}
+          />
+        )}
+        {isOverlayActive(ExclusiveOverlays.ADD_FENCE) && (
+          <AddFenceOverlay
+            onClose={() => {
+              setActiveOverlay(ExclusiveOverlays.ADD_FENCE, OverlayType.EXCLUSIVE, false);
+              removeDrawingPoints();
+            }}
+            onSave={handleAddFenceAndOverlayUpdate}
+            drawingPaths={drawingPolygonPaths}
+            onRemoveLastPoint={removeLastDrawingPoint}
+          />
+        )}
+
+        {isOverlayActive(ExclusiveOverlays.ADD_PERMISSION) && (
+          <RequestLocationOverlay
+            onClose={() => setActiveOverlay(ExclusiveOverlays.ADD_PERMISSION, OverlayType.EXCLUSIVE, false)}
+          />
+        )}
+
+        <div className='flex-none h-16'>
+          <BottomNavigation />
+        </div>
       </div>
-
-      {/* --- Overlay UI - Conditionally Rendered based on OverlayContext --- */}
-      {isOverlayActive(DefaultOverlays.SHARE) && (
-        <UserLocationAvatars onOpenBeaconHub={openBeaconHub} />
-      )}
-
-      {isOverlayActive(ExclusiveOverlays.BEACON_HUB) && (
-        <BeaconHubOverlay
-          onClose={() => setActiveOverlay(ExclusiveOverlays.BEACON_HUB, OverlayType.EXCLUSIVE, false)}
-          initialTab={initialBeaconHubTab}
-          highlightUserId={highlightedBeaconUserId}
-        />
-      )}
-
-      {isOverlayActive(ExclusiveOverlays.DETAILS) && (
-        <DetailsOverlay onClose={() => setActiveOverlay(ExclusiveOverlays.DETAILS, OverlayType.EXCLUSIVE, false)} />
-      )}
-      {isOverlayActive(ExclusiveOverlays.FENCES) && (
-        <FencesOverlay
-          fences={fences}
-          onClose={() => setActiveOverlay(ExclusiveOverlays.FENCES, OverlayType.EXCLUSIVE, false)}
-          onAddFenceClick={() => setActiveOverlay(ExclusiveOverlays.ADD_FENCE, OverlayType.EXCLUSIVE, true)}
-          deleteFence={deleteFence}
-        />
-      )}
-      {isOverlayActive(ExclusiveOverlays.ADD_FENCE) && (
-        <AddFenceOverlay
-          onClose={() => {
-            setActiveOverlay(ExclusiveOverlays.ADD_FENCE, OverlayType.EXCLUSIVE, false);
-            removeDrawingPoints();
-          }}
-          onSave={handleAddFenceAndOverlayUpdate}
-          drawingPaths={drawingPolygonPaths}
-          onRemoveLastPoint={removeLastDrawingPoint}
-        />
-      )}
-
-      {isOverlayActive(ExclusiveOverlays.ADD_PERMISSION) && (
-        <RequestLocationOverlay
-          onClose={() => setActiveOverlay(ExclusiveOverlays.ADD_PERMISSION, OverlayType.EXCLUSIVE, false)}
-        />
-      )}
-
-      <div className='flex-none h-16'>
-        <BottomNavigation />
-      </div>
-    </div>
+    </MapProvider>
   );
 }
