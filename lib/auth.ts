@@ -5,9 +5,12 @@ import type {
   NextApiResponse,
 } from "next"
 import { getServerSession } from "next-auth"
-import GoogleProvider from "next-auth/providers/google"
+import CredentialsProvider from "next-auth/providers/credentials"
 import { MongoDBAdapter } from "@auth/mongodb-adapter"
 import client from "./db"
+import dbconnect from "./dbconnect"
+import User from "@/models/Users"
+import bcrypt from "bcryptjs"
 
 
 
@@ -20,10 +23,33 @@ export const authOptions: NextAuthOptions = {
     signIn: "/",
   },
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    })
+    CredentialsProvider({
+      name: 'Credentials',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        await dbconnect();
+
+        const user = await User.findOne({ email: credentials?.email }).select('+password');
+
+        if (user) {
+          const isPasswordCorrect = await bcrypt.compare(credentials!.password, user.password!);
+          
+          if (isPasswordCorrect) {
+            return {
+              id: user._id.toString(),
+              name: user.name,
+              email: user.email,
+              image: user.image,
+              emailVerified: user.emailVerified,
+            };
+          }
+        }
+        return null;
+      },
+    }),
   ],
   callbacks: {
 
@@ -75,11 +101,11 @@ export const authOptions: NextAuthOptions = {
           };
         }
         // If you have other providers (e.g., CredentialsProvider), handle them here
-        // else if (account.provider === 'credentials' && user) {
-        //    token.accessToken = (user as any).accessToken; // Assuming your authorize callback returns this
-        //    token.id = user.id;
-        //    token.user = { id: user.id, name: user.name, email: user.email, image: user.image };
-        // }
+        else if (account.provider === 'credentials' && user) {
+          //  token.accessToken = user?.accessToken || ''; // Assuming your authorize callback returns this
+           token.id = user.id;
+           token.user = { name: user.name as string, email: user.email as string, image: user.image as string };
+        }
       }
 
       // The `token` object is what NextAuth uses internally.
