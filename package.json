@@ -11,6 +11,7 @@
   "dependencies": {
     "@auth/mongodb-adapter": "^3.10.0",
     "@react-google-maps/api": "^2.20.7",
+    "bcryptjs": "^3.0.2",
     "mongodb": "^6.17.0",
     "mongoose": "^8.16.4",
     "next": "15.3.5",
